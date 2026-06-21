@@ -1,0 +1,88 @@
+cii:
+  IMO_CII_2023_phase1:
+    description: "IMO CII Phase 1 (2023-2026)"
+    source: "MARPOL Annex VI, MEPC.352(78), MEPC.353(78), MEPC.354(78), MEPC.355(78)"
+    applicable_gt_threshold: 5000
+    gases: ["CO2"]
+    scope: "global"
+    years: [2023, 2024, 2025, 2026]
+    reduction_factors:
+      2023: 0.05
+      2024: 0.07
+      2025: 0.09
+      2026: 0.11
+    # NOTE: CII reference lines (a, c, capacity basis) and the ship-type-specific,
+    # size-dependent rating dd-vectors are transcribed verbatim from MEPC.353(78)
+    # Table 1 and MEPC.354(78) Table 1 in carbon_twin/regulations/cii.py
+    # (_REFERENCE_LINES and _DD_VECTORS). They are regulatory constants, not a
+    # version knob, so they live in code with the rest of the formula rather than
+    # here. Earlier revisions wrongly used a single fleet-wide vector
+    # [0.86,0.94,1.06,1.18]; that is the bulk-carrier vector only.
+
+fueleu:
+  EU_2023_1805:
+    description: "FuelEU Maritime Regulation (EU) 2023/1805"
+    source: "Regulation (EU) 2023/1805"
+    applicable_gt_threshold: 5000
+    gases: ["CO2", "CH4", "N2O"]
+    scope: "well_to_wake"
+    reference_value_gCO2e_per_MJ: 91.16
+    reduction_targets:
+      2025: 0.02
+      2030: 0.06
+      2035: 0.145
+      2040: 0.31
+      2045: 0.62
+      2050: 0.80
+    penalty_per_gCO2e_per_MJ_deficit: 2400
+    rfnbo_multiplier: 2.0
+    banking_allowed: true
+    borrowing_allowed: true
+    borrowing_limit_pct: 0.02
+    pooling_allowed: true
+    ops_obligation:
+      start_year: 2030
+      ship_types: ["container_ship", "cruise_passenger"]
+      extended_year: 2035
+
+eu_ets:
+  EU_ETS_Maritime_2024:
+    description: "EU ETS extension to maritime (Directive 2023/959)"
+    source: "Directive 2023/959 amending Directive 2003/87/EC"
+    applicable_gt_threshold: 5000
+    gases_2024: ["CO2"]
+    gases_2026: ["CO2", "CH4", "N2O"]
+    scope_intra_eea: 1.0
+    scope_extra_eea: 0.5
+    scope_port: 1.0
+    phase_in:
+      2024: 0.40
+      2025: 0.70
+      2026: 1.00
+    offshore_ships_from: 2027
+    ice_class_allowance: true
+
+imo_nzf:
+  MEPC83_draft:
+    description: "IMO Net-Zero Framework draft approved at MEPC 83"
+    status: "approved_draft"
+    source: "MEPC 83 outcome, April 2025"
+    applicable_gt_threshold: 5000
+    metric: "GHG_fuel_intensity"
+    pricing_mechanism: true
+    reward_units: true
+    entry_year_assumption: 2028
+    gfi_targets:
+      2028: null
+      2030: null
+      2035: null
+      2040: null
+      2050: null
+    note: "Targets not finalized; use scenario parameters"
+
+  MEPC84_negotiation:
+    description: "Post-MEPC 84 negotiation state"
+    status: "under_negotiation"
+    source: "MEPC 84 outcome, October 2025"
+    parameter_uncertainty: "high"
+    note: "Intersessional WG established for MEPC 85"

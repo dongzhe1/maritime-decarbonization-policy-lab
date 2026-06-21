@@ -1,0 +1,133 @@
+# Case study: mixed fleet for Monte Carlo stress testing
+# Used by scripts/run_scenarios.py for Experiments 5–7 (pooling, ETS stress test, IMO NZF)
+
+case:
+  name: "mixed_fleet"
+  description: "Heterogeneous fleet across ship types for multi-regulation stress testing"
+  year: 2026
+
+fleet:
+  # Large container ship (EEA-intensive, high ETS exposure)
+  - vessel_id: "IMO9100001"
+    name: "MixedFleet-Container-L"
+    ship_type: "container_ship"
+    gt: 120000
+    dwt: 115000
+    teu_capacity: 12000
+    main_engine_mcr_kw: 62000
+    design_speed_kn: 21.0
+    age_years: 6
+    flag: "PA"
+    route_profile: "asia_europe"
+    ets_scope_avg: 0.5
+    fuel_current: "VLSFO"
+    cii_current_rating: "C"
+
+  # Bulk carrier (global trades, lower EEA exposure)
+  - vessel_id: "IMO9100002"
+    name: "MixedFleet-Bulk-M"
+    ship_type: "bulk_carrier"
+    gt: 45000
+    dwt: 82000
+    main_engine_mcr_kw: 11000
+    design_speed_kn: 14.5
+    age_years: 14
+    flag: "MH"
+    route_profile: "global_dry_bulk"
+    ets_scope_avg: 0.2
+    fuel_current: "VLSFO"
+    cii_current_rating: "D"
+
+  # Product tanker (intra-EEA, high ETS + FuelEU exposure)
+  - vessel_id: "IMO9100003"
+    name: "MixedFleet-Tanker-S"
+    ship_type: "tanker"
+    gt: 30000
+    dwt: 50000
+    main_engine_mcr_kw: 9000
+    design_speed_kn: 15.0
+    age_years: 9
+    flag: "LR"
+    route_profile: "intra_eea"
+    ets_scope_avg: 1.0
+    fuel_current: "VLSFO"
+    cii_current_rating: "B"
+
+  # LNG carrier (non-CO2 emissions significant for FuelEU)
+  - vessel_id: "IMO9100004"
+    name: "MixedFleet-LNG-L"
+    ship_type: "lng_carrier"
+    gt: 95000
+    dwt: 88000
+    main_engine_mcr_kw: 40000
+    design_speed_kn: 19.5
+    age_years: 3
+    flag: "MH"
+    route_profile: "lng_trade"
+    ets_scope_avg: 0.3
+    fuel_current: "LNG"
+    cii_current_rating: "A"
+    methane_slip_risk: true
+
+  # Container feeder (intra-EEA, candidate for early fuel switch)
+  - vessel_id: "IMO9100005"
+    name: "MixedFleet-Feeder"
+    ship_type: "container_ship"
+    gt: 18000
+    dwt: 17000
+    teu_capacity: 1700
+    main_engine_mcr_kw: 12000
+    design_speed_kn: 18.0
+    age_years: 7
+    flag: "CY"
+    route_profile: "intra_eea"
+    ets_scope_avg: 1.0
+    fuel_current: "biodiesel_B100"
+    cii_current_rating: "A"
+    fueleu_surplus_vessel: true
+
+routes:
+  asia_europe:
+    distance_nm: 11500
+    ets_scope: 0.5
+    voyages_per_year: 6
+  global_dry_bulk:
+    distance_nm: 9000
+    ets_scope: 0.2
+    voyages_per_year: 8
+  intra_eea:
+    distance_nm: 800
+    ets_scope: 1.0
+    voyages_per_year: 40
+  lng_trade:
+    distance_nm: 7000
+    ets_scope: 0.3
+    voyages_per_year: 10
+
+fueleu_pooling:
+  enabled: true
+  group_id: "pool_mixed_2026"
+  members:
+    - "IMO9100001"
+    - "IMO9100002"
+    - "IMO9100003"
+    - "IMO9100004"
+    - "IMO9100005"
+  surplus_providers:
+    - "IMO9100005"  # B100 vessel
+    - "IMO9100004"  # LNG (if methane slip acceptable)
+  deficit_vessels:
+    - "IMO9100001"
+    - "IMO9100002"
+
+stress_test:
+  eua_price_range: [50, 80, 100, 150, 200]
+  fuel_price_scenarios: ["low", "base", "high"]
+  imo_nzf_scenarios: ["disabled", "MEPC83_draft", "high_levy", "low_levy"]
+  n_monte_carlo: 5000
+
+optimization_targets:
+  - total_compliance_cost
+  - co2e_emissions_WtW
+  - robust_regret
+  - cvar_95_compliance_cost

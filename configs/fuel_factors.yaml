@@ -1,0 +1,166 @@
+fuels:
+  HFO:
+    name: "Heavy Fuel Oil"
+    lcv_mj_per_kg: 40.2
+    density_kg_per_m3: 991.0
+    ttw_co2_g_per_g_fuel: 3.114
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 91.16
+    fueleu_default_emission_factor_gCO2e_per_MJ: 91.16
+    availability: "global"
+    category: "fossil"
+
+  VLSFO:
+    name: "Very Low Sulphur Fuel Oil"
+    lcv_mj_per_kg: 41.0
+    density_kg_per_m3: 960.0
+    ttw_co2_g_per_g_fuel: 3.114
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 90.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 90.0
+    availability: "global"
+    category: "fossil"
+
+  MGO:
+    name: "Marine Gas Oil"
+    lcv_mj_per_kg: 42.7
+    density_kg_per_m3: 855.0
+    ttw_co2_g_per_g_fuel: 3.206
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 88.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 88.0
+    availability: "global"
+    category: "fossil"
+
+  LNG:
+    name: "Liquefied Natural Gas"
+    lcv_mj_per_kg: 49.1
+    density_kg_per_m3: 450.0
+    ttw_co2_g_per_g_fuel: 2.750
+    ttw_ch4_g_per_g_fuel: 0.05491
+    ttw_n2o_g_per_g_fuel: 0.00011
+    wtw_co2e_g_per_mj: 80.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 80.0
+    availability: "major_ports"
+    category: "fossil_gas"
+    methane_slip_risk: "high"
+    engine_types:
+      LPDF: { ch4_slip_g_per_kwh: 3.5 }
+      HPDF: { ch4_slip_g_per_kwh: 0.2 }
+
+  LPG:
+    name: "Liquefied Petroleum Gas"
+    lcv_mj_per_kg: 46.0
+    density_kg_per_m3: 540.0
+    ttw_co2_g_per_g_fuel: 3.015
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 85.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 85.0
+    availability: "limited"
+    category: "fossil_gas"
+
+  methanol_fossil:
+    name: "Methanol (fossil)"
+    lcv_mj_per_kg: 19.9
+    density_kg_per_m3: 792.0
+    ttw_co2_g_per_g_fuel: 1.375
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 98.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 98.0
+    availability: "growing"
+    category: "fossil"
+
+  methanol_bio:
+    name: "Methanol (biomass)"
+    lcv_mj_per_kg: 19.9
+    density_kg_per_m3: 792.0
+    ttw_co2_g_per_g_fuel: 1.375
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 14.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 14.0
+    availability: "limited"
+    category: "biofuel"
+
+  methanol_e:
+    name: "e-Methanol (RFNBO)"
+    lcv_mj_per_kg: 19.9
+    density_kg_per_m3: 792.0
+    ttw_co2_g_per_g_fuel: 1.375
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 5.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 5.0
+    availability: "very_limited"
+    category: "rfnbo"
+    rfnbo_eligible: true
+
+  ammonia_fossil:
+    name: "Ammonia (fossil)"
+    lcv_mj_per_kg: 18.6
+    density_kg_per_m3: 682.0
+    ttw_co2_g_per_g_fuel: 0.0
+    ttw_ch4_g_per_g_fuel: 0.0
+    ttw_n2o_g_per_g_fuel: 0.003
+    wtw_co2e_g_per_mj: 120.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 120.0
+    availability: "pilot"
+    category: "fossil"
+    n2o_slip_risk: "high"
+
+  ammonia_green:
+    name: "Ammonia (green / RFNBO)"
+    lcv_mj_per_kg: 18.6
+    density_kg_per_m3: 682.0
+    ttw_co2_g_per_g_fuel: 0.0
+    ttw_ch4_g_per_g_fuel: 0.0
+    ttw_n2o_g_per_g_fuel: 0.003
+    wtw_co2e_g_per_mj: 8.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 8.0
+    availability: "very_limited"
+    category: "rfnbo"
+    rfnbo_eligible: true
+
+  biodiesel_fame:
+    name: "Biodiesel (FAME)"
+    lcv_mj_per_kg: 37.0
+    density_kg_per_m3: 890.0
+    ttw_co2_g_per_g_fuel: 2.834
+    ttw_ch4_g_per_g_fuel: 0.00006
+    ttw_n2o_g_per_g_fuel: 0.00016
+    wtw_co2e_g_per_mj: 30.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 30.0
+    availability: "moderate"
+    category: "biofuel"
+    drop_in: true
+
+  hydrogen_green:
+    name: "Hydrogen (green / RFNBO)"
+    lcv_mj_per_kg: 120.0
+    density_kg_per_m3: 71.0
+    ttw_co2_g_per_g_fuel: 0.0
+    ttw_ch4_g_per_g_fuel: 0.0
+    ttw_n2o_g_per_g_fuel: 0.0
+    wtw_co2e_g_per_mj: 4.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 4.0
+    availability: "pilot"
+    category: "rfnbo"
+    rfnbo_eligible: true
+
+  shore_power:
+    name: "Shore Power (OPS)"
+    wtw_co2e_g_per_mj: 0.0
+    fueleu_default_emission_factor_gCO2e_per_MJ: 0.0
+    availability: "eu_major_ports"
+    category: "electricity"
+    zero_emission_technology: true
+
+gwp_100:
+  CO2: 1
+  CH4: 28
+  N2O: 265

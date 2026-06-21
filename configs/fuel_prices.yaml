@@ -1,0 +1,54 @@
+price_scenarios:
+  base_2026:
+    currency: "USD"
+    unit: "per_tonne"
+    date: "2026-01-01"
+    prices:
+      HFO: 500
+      VLSFO: 600
+      MGO: 750
+      LNG: 700
+      LPG: 650
+      methanol_fossil: 400
+      methanol_bio: 1200
+      methanol_e: 1800
+      ammonia_fossil: 500
+      ammonia_green: 1500
+      biodiesel_fame: 1400
+      hydrogen_green: 4000
+
+  high_fossil_2026:
+    currency: "USD"
+    unit: "per_tonne"
+    date: "2026-01-01"
+    prices:
+      HFO: 700
+      VLSFO: 820
+      MGO: 1000
+      LNG: 950
+      LPG: 850
+      methanol_fossil: 550
+      methanol_bio: 1200
+      methanol_e: 1800
+      ammonia_fossil: 650
+      ammonia_green: 1500
+      biodiesel_fame: 1400
+      hydrogen_green: 4000
+
+  low_alternative_2030:
+    currency: "USD"
+    unit: "per_tonne"
+    date: "2030-01-01"
+    prices:
+      HFO: 550
+      VLSFO: 650
+      MGO: 800
+      LNG: 600
+      LPG: 600
+      methanol_fossil: 380
+      methanol_bio: 800
+      methanol_e: 1100
+      ammonia_fossil: 450
+      ammonia_green: 900
+      biodiesel_fame: 1000
+      hydrogen_green: 2500

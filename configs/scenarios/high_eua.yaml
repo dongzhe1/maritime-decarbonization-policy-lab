@@ -1,0 +1,33 @@
+scenario:
+  name: "high_eua_2026"
+  description: "High EUA price scenario"
+  year: 2026
+
+  regulations:
+    cii:
+      version: "IMO_CII_2023_phase1"
+      enabled: true
+    fueleu:
+      version: "EU_2023_1805"
+      enabled: true
+    eu_ets:
+      version: "EU_ETS_Maritime_2024"
+      enabled: true
+    imo_nzf:
+      version: "MEPC83_draft"
+      enabled: false
+
+  fuel_prices: "base_2026"
+  eua_price: "high"
+
+  fleet_defaults:
+    main_fuel: "VLSFO"
+    aux_fuel: "MGO"
+    speed_reduction_pct: 0.0
+    shore_power: false
+
+  uncertainty:
+    eua_price_std_pct: 0.20
+    fuel_price_std_pct: 0.10
+    emission_factor_std_pct: 0.05
+    weather_penalty_std_pct: 0.10

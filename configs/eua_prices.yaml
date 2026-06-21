@@ -1,0 +1,48 @@
+eua_price_scenarios:
+  low:
+    description: "Low EUA price trajectory"
+    unit: "EUR_per_tCO2e"
+    prices:
+      2024: 60
+      2025: 55
+      2026: 50
+      2027: 50
+      2028: 55
+      2029: 55
+      2030: 60
+
+  base:
+    description: "Base EUA price trajectory"
+    unit: "EUR_per_tCO2e"
+    prices:
+      2024: 70
+      2025: 75
+      2026: 80
+      2027: 85
+      2028: 90
+      2029: 95
+      2030: 100
+
+  high:
+    description: "High EUA price trajectory"
+    unit: "EUR_per_tCO2e"
+    prices:
+      2024: 80
+      2025: 100
+      2026: 120
+      2027: 140
+      2028: 160
+      2029: 180
+      2030: 200
+
+  stress:
+    description: "Stress test EUA price"
+    unit: "EUR_per_tCO2e"
+    prices:
+      2024: 90
+      2025: 130
+      2026: 180
+      2027: 220
+      2028: 260
+      2029: 280
+      2030: 300

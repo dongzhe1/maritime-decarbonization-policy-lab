@@ -1,0 +1,37 @@
+# Default uncertainty specification for Monte Carlo scenario analysis
+uncertainties:
+  eua_price:
+    distribution: lognormal
+    mean: 65
+    sigma: 20
+    unit: EUR_per_tCO2e
+
+  fuel_prices:
+    VLSFO:
+      distribution: normal
+      mean: 600
+      std: 60
+      unit: USD_per_tonne
+    LNG:
+      distribution: normal
+      mean: 700
+      std: 80
+      unit: USD_per_tonne
+
+  weather_factor:
+    distribution: uniform
+    low: 0.92
+    high: 1.12
+
+  imo_nzf_price:
+    distribution: uniform
+    low: 50
+    high: 250
+    unit: EUR_per_tCO2e
+
+  methane_slip_factor:
+    distribution: triangular
+    low: 0.8
+    high: 2.5
+    mode: 1.5
+    description: "LNG methane slip multiplier on default CH4 factor"
