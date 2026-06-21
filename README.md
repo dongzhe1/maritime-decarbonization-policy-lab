@@ -249,7 +249,7 @@ and scope follow **Directive 2003/87/EC** as amended by **Directive 2023/959**.
 
 ## Citation
 
-10.5281/zenodo.20782698
+[![DOI](https://zenodo.org/badge/1275636879.svg)](https://doi.org/10.5281/zenodo.20782697)
 
 ## Licence
 
