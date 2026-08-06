@@ -184,15 +184,11 @@ def voyage_fuel_consumption(
     ac = estimate_admiralty_coeff(vessel)
 
     if speed_profile is not None and len(speed_profile) > 0:
-        avg_power = float(
-            np.mean(
-                np.where(
-                    speed_profile > 0,
-                    (displacement ** (2 / 3) * speed_profile**3) / ac,
-                    0.0,
-                )
-            )
-        )
+        avg_power = float(np.mean(np.where(
+            speed_profile > 0,
+            (displacement ** (2 / 3) * speed_profile**3) / ac,
+            0.0,
+        )))
     else:
         avg_speed = voyage.avg_speed_knots
         if avg_speed is None or avg_speed <= 0:
@@ -200,7 +196,9 @@ def voyage_fuel_consumption(
             if sea_hours and sea_hours > 0:
                 avg_speed = voyage.distance_nm / sea_hours
             else:
-                avg_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
+                avg_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(
+                    vessel.ship_type, 14.0
+                )
         avg_power = admiralty_power(displacement, avg_speed, ac)
 
     age = 0
@@ -219,7 +217,9 @@ def voyage_fuel_consumption(
     if sea_hours is None or sea_hours <= 0:
         avg_speed = voyage.avg_speed_knots
         if avg_speed is None or avg_speed <= 0:
-            avg_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
+            avg_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(
+                vessel.ship_type, 14.0
+            )
         sea_hours = voyage.distance_nm / max(avg_speed, 0.1)
 
     me_tonnes = main_engine_fuel_rate(avg_power) * sea_hours
@@ -307,7 +307,6 @@ def annual_fuel_consumption(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
 
 def _estimate_displacement(vessel: Vessel) -> float:
     """Estimate displacement from DWT and GT (lightweight ~ 0.3*GT for cargo)."""

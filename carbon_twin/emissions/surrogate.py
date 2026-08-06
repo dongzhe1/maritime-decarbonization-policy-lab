@@ -76,28 +76,26 @@ class EmissionSurrogate:
             ship_type_code = list(ShipType).index(v.ship_type)
             age = 2026 - v.year_built if v.year_built else 15
 
-            rows.append(
-                {
-                    "vessel_imo": voy.vessel_imo,
-                    "voyage_id": voy.voyage_id,
-                    "ship_type_code": ship_type_code,
-                    "gross_tonnage": v.gross_tonnage,
-                    "deadweight": v.deadweight or 0.0,
-                    "main_engine_power_kw": v.main_engine_power_kw or 0.0,
-                    "design_speed_knots": v.design_speed_knots or 0.0,
-                    "age": age,
-                    "distance_nm": voy.distance_nm,
-                    "avg_speed_knots": speed,
-                    "sea_hours": sea_hours,
-                    "weather_factor": wf,
-                    "cargo_tonnes": voy.cargo_tonnes or 0.0,
-                    "draught_m": voy.draught_m or v.draught_m or 0.0,
-                    "length_m": v.length_m or 0.0,
-                    "beam_m": v.beam_m or 0.0,
-                    "speed_cubed": speed**3,
-                    "distance_x_gt": voy.distance_nm * v.gross_tonnage,
-                }
-            )
+            rows.append({
+                "vessel_imo": voy.vessel_imo,
+                "voyage_id": voy.voyage_id,
+                "ship_type_code": ship_type_code,
+                "gross_tonnage": v.gross_tonnage,
+                "deadweight": v.deadweight or 0.0,
+                "main_engine_power_kw": v.main_engine_power_kw or 0.0,
+                "design_speed_knots": v.design_speed_knots or 0.0,
+                "age": age,
+                "distance_nm": voy.distance_nm,
+                "avg_speed_knots": speed,
+                "sea_hours": sea_hours,
+                "weather_factor": wf,
+                "cargo_tonnes": voy.cargo_tonnes or 0.0,
+                "draught_m": voy.draught_m or v.draught_m or 0.0,
+                "length_m": v.length_m or 0.0,
+                "beam_m": v.beam_m or 0.0,
+                "speed_cubed": speed**3,
+                "distance_x_gt": voy.distance_nm * v.gross_tonnage,
+            })
 
         return pd.DataFrame(rows)
 
@@ -193,7 +191,7 @@ class EmissionSurrogate:
                 X_boot = X_arr[indices]
                 if self.model_type == "linear":
                     assert self._scaler is not None
-                    preds_matrix[b] = model.predict(self._scaler.transform(X_boot[:n_samples]))
+                    preds_matrix[b] = model.predict(self._scaler.transform(X_boot[: n_samples]))
                 else:
                     preds_matrix[b] = model.predict(X_boot[:n_samples])
 
@@ -259,13 +257,11 @@ class EmissionSurrogate:
                 importances = np.zeros(len(self._feature_names))
 
             for feat, imp in zip(self._feature_names, importances):
-                records.append(
-                    {
-                        "feature": feat,
-                        "target": target_name,
-                        "importance": float(imp),
-                    }
-                )
+                records.append({
+                    "feature": feat,
+                    "target": target_name,
+                    "importance": float(imp),
+                })
 
         df = pd.DataFrame(records)
         avg = (

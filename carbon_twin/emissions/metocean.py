@@ -10,19 +10,7 @@ from carbon_twin.data.schemas import ShipType, Vessel, Voyage
 
 # Beaufort scale: upper bound of wind speed (m/s) for each level 0-12
 _BEAUFORT_SPEED_MS: list[float] = [
-    0.3,
-    1.6,
-    3.4,
-    5.5,
-    8.0,
-    10.8,
-    13.9,
-    17.2,
-    20.8,
-    24.5,
-    28.5,
-    32.7,
-    36.0,
+    0.3, 1.6, 3.4, 5.5, 8.0, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7, 36.0,
 ]
 
 # Average weather penalty by ship type (fraction above calm-water resistance)
@@ -162,12 +150,10 @@ def voyage_weather_penalty(
         wind_speeds = wind_speeds[:min_len]
         wave_heights = wave_heights[:min_len]
 
-        factors = np.array(
-            [
-                compute_weather_factor(float(ws), float(wh), ship_type, vessel_length)
-                for ws, wh in zip(wind_speeds, wave_heights)
-            ]
-        )
+        factors = np.array([
+            compute_weather_factor(float(ws), float(wh), ship_type, vessel_length)
+            for ws, wh in zip(wind_speeds, wave_heights)
+        ])
         return float(np.mean(factors))
 
     # No weather data: use the voyage-stored factor or a ship-type average
@@ -181,7 +167,6 @@ def voyage_weather_penalty(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
 
 def _added_resistance_wind_simple(wind_speed_ms: float, ship_type: ShipType) -> float:
     """Simplified wind fraction: quadratic in wind speed, scaled by type."""

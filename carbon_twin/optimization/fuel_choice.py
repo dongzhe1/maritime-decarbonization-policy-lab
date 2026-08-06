@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from itertools import product
 from typing import Any
 
@@ -11,8 +12,8 @@ import pandas as pd
 
 from carbon_twin.data.schemas import FuelRecord, FuelType, Vessel, Voyage
 from carbon_twin.emissions.factors import (
-    _DEFAULT_TTW_CO2_G_PER_G,
     GWP100,
+    _DEFAULT_TTW_CO2_G_PER_G,
     FuelEmissionFactors,
     get_co2e_ttw,
     get_co2e_wtw,
@@ -95,9 +96,7 @@ def optimal_fuel_mix(
         cost = mass * fo.price_per_tonne
         co2e_ttw = get_co2e_ttw(fo.fuel_type, mass, fuel_factors)
         co2e_wtw = get_co2e_wtw(fo.fuel_type, energy, fuel_factors)
-        ghg_i = (
-            fuel_factors[fo.fuel_type].wtw_co2e_g_per_mj if fo.fuel_type in fuel_factors else 0.0
-        )
+        ghg_i = fuel_factors[fo.fuel_type].wtw_co2e_g_per_mj if fo.fuel_type in fuel_factors else 0.0
         return {
             "fuel_mix": {fo.fuel_type: fraction},
             "total_cost": cost,
@@ -106,8 +105,8 @@ def optimal_fuel_mix(
             "co2e_wtw": co2e_wtw,
         }
 
-    np.arange(0, blend_resolution + 1) / blend_resolution
-    len(fuel_options)
+    steps = np.arange(0, blend_resolution + 1) / blend_resolution
+    n_fuels = len(fuel_options)
 
     best_cost = float("inf")
     best_result: dict[str, Any] = {}
@@ -246,19 +245,17 @@ def marginal_abatement_cost(
 
         mac = delta_cost / delta_co2e if delta_co2e > 0 else float("inf")
 
-        rows.append(
-            {
-                "fuel_type": fo.fuel_type.value,
-                "price_per_tonne": fo.price_per_tonne,
-                "fuel_mass_tonnes": mass,
-                "fuel_cost": cost,
-                "co2e_tonnes": co2e,
-                "delta_cost": delta_cost,
-                "delta_co2e_tonnes": delta_co2e,
-                "mac_eur_per_tco2e": mac,
-                "abatement_pct": (delta_co2e / co2e_baseline * 100) if co2e_baseline > 0 else 0.0,
-            }
-        )
+        rows.append({
+            "fuel_type": fo.fuel_type.value,
+            "price_per_tonne": fo.price_per_tonne,
+            "fuel_mass_tonnes": mass,
+            "fuel_cost": cost,
+            "co2e_tonnes": co2e,
+            "delta_cost": delta_cost,
+            "delta_co2e_tonnes": delta_co2e,
+            "mac_eur_per_tco2e": mac,
+            "abatement_pct": (delta_co2e / co2e_baseline * 100) if co2e_baseline > 0 else 0.0,
+        })
 
     df = pd.DataFrame(rows)
     if not df.empty:
@@ -305,6 +302,16 @@ _EXTENDED_FUELS: list[FuelType] = [
 ]
 # Categories whose CO2 is biogenic / renewable → zero-rated under EU ETS.
 _BIOGENIC_CATEGORIES: set[str] = {"biofuel", "rfnbo"}
+# Bio-derived (crop/waste) fuels, distinct from synthetic e-fuels/RFNBO. A
+# "no biofuel" feasibility scenario removes these but keeps RFNBO e-fuels; the
+# biofuel share cap targets these too.
+_BIOFUEL_CATEGORIES: set[str] = {"biofuel"}
+
+
+def _is_biofuel(ef: FuelEmissionFactors | None) -> bool:
+    """True if the fuel is a bio-derived (crop/waste) fuel, e.g. FAME or
+    bio-methanol — not a synthetic e-fuel/RFNBO."""
+    return ef is not None and ef.category in _BIOFUEL_CATEGORIES
 
 
 def fuel_menu(vessel: Vessel, extended: bool = False) -> list[FuelType]:
@@ -378,13 +385,8 @@ def _evaluate_point(
 
     annual_cii_co2 = _cii_co2_tonnes(ef, mass) * annual_fuel_scale
     cii_annual, attained = _cii_annual_penalty(
-        cii_engine,
-        vessel,
-        annual_cii_co2,
-        annual_dist,
-        year,
-        cii_pressure,
-        charter_per_day,
+        cii_engine, vessel, annual_cii_co2, annual_dist, year,
+        cii_pressure, charter_per_day,
     )
     cii_penalty = cii_annual / max(annual_fuel_scale, 1.0)
 
@@ -461,27 +463,12 @@ def optimal_fuel_speed_multi_regulation(
         if price is None:
             continue
         for spd in speeds:
-            rows.append(
-                _evaluate_point(
-                    vessel,
-                    voyage,
-                    fuel,
-                    float(spd),
-                    float(price),
-                    eua_price,
-                    fuel_factors,
-                    cii_engine,
-                    fueleu_engine,
-                    ets_phase_in,
-                    year,
-                    annual_dist,
-                    annual_fuel_scale,
-                    cii_pressure,
-                    charter_per_day,
-                    delay_cost_per_hour,
-                    scheduled_hours,
-                )
-            )
+            rows.append(_evaluate_point(
+                vessel, voyage, fuel, float(spd), float(price), eua_price,
+                fuel_factors, cii_engine, fueleu_engine, ets_phase_in, year,
+                annual_dist, annual_fuel_scale, cii_pressure, charter_per_day,
+                delay_cost_per_hour, scheduled_hours,
+            ))
 
     if not rows:
         return {}
@@ -527,28 +514,28 @@ def _fueleu_blend_eval(
     vessel: Vessel,
     fuel_energy: list[tuple[FuelType, float]],
     year: int,
-) -> tuple[float, float]:
-    """FuelEU (penalty_eur, signed compliance_balance) for an energy-weighted blend
-    via the engine (handles energy-weighted WtW intensity + RFNBO bonus). The
-    signed balance (deficit < 0 < surplus) is needed for fleet pooling."""
+) -> tuple[float, float, float, float]:
+    """FuelEU (penalty_eur, signed compliance_balance, actual_intensity, energy_mj)
+    for an energy-weighted blend via the engine (handles energy-weighted WtW
+    intensity + RFNBO bonus). The signed balance (deficit < 0 < surplus), actual
+    intensity and total energy are all needed for fleet-level pooling."""
     if fueleu_engine is None:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0
     records: list[FuelRecord] = []
     total = 0.0
     for ft, e in fuel_energy:
         if e <= 0:
             continue
-        records.append(
-            FuelRecord(vessel_imo=vessel.imo_number, fuel_type=ft, mass_tonnes=0.0, energy_mj=e)
-        )
+        records.append(FuelRecord(
+            vessel_imo=vessel.imo_number, fuel_type=ft, mass_tonnes=0.0, energy_mj=e))
         total += e
     if total <= 0:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0
     try:
         r = fueleu_engine.evaluate(vessel, records, total, year)
-        return r.penalty_eur, r.compliance_balance
+        return r.penalty_eur, r.compliance_balance, r.actual_ghg_intensity, total
     except Exception:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0, total
 
 
 def _evaluate_blend_point(
@@ -572,12 +559,19 @@ def _evaluate_blend_point(
     charter_per_day: float,
     delay_cost_per_hour: float,
     scheduled_hours: float | None,
+    energy_scale: float = 1.0,
+    fueleu_price_fraction: float = 1.0,
 ) -> dict[str, Any]:
     """Cost components for a blend of ``phi`` energy-fraction ``alt_fuel`` into
     ``base_fuel`` at ``speed``. Energy demand is fuel-independent (taken from the
-    base-fuel physics) and split across components by energy."""
+    base-fuel physics) and split across components by energy.
+
+    ``energy_scale`` (MRV calibration) multiplies the propulsion energy so the
+    vessel's baseline energy/emissions are anchored to its MRV total while the
+    speed elasticity (cubic law) is preserved. Delay cost is time-based and is
+    NOT scaled."""
     fc = _fuel_at_speed(vessel, voyage, speed, base_fuel, fuel_factors)
-    energy = fc["energy_mj"]  # total propulsion energy (MJ), fuel-independent
+    energy = fc["energy_mj"] * energy_scale   # total propulsion energy (MJ), fuel-independent
     bef = fuel_factors.get(base_fuel)
     aef = fuel_factors.get(alt_fuel)
     lcv_b = bef.lcv_mj_per_kg if bef else 41.0
@@ -585,26 +579,24 @@ def _evaluate_blend_point(
 
     e_alt = phi * energy
     e_base = (1.0 - phi) * energy
-    m_base = e_base / (1000.0 * lcv_b) if lcv_b > 0 else 0.0  # tonnes
+    m_base = e_base / (1000.0 * lcv_b) if lcv_b > 0 else 0.0   # tonnes
     m_alt = e_alt / (1000.0 * lcv_a) if lcv_a > 0 else 0.0
 
     fuel_cost = m_base * base_price + m_alt * alt_price
 
-    ets_co2e = _ets_covered_tonnes(base_fuel, bef, m_base, year) + _ets_covered_tonnes(
-        alt_fuel, aef, m_alt, year
-    )
+    ets_co2e = (_ets_covered_tonnes(base_fuel, bef, m_base, year)
+                + _ets_covered_tonnes(alt_fuel, aef, m_alt, year))
     ets_cost = ets_co2e * voyage.ets_scope_factor * ets_phase_in * eua_price
 
     cii_co2_leg = _cii_co2_tonnes(bef, m_base) + _cii_co2_tonnes(aef, m_alt)
     annual_cii_co2 = cii_co2_leg * annual_fuel_scale
     cii_annual, attained = _cii_annual_penalty(
-        cii_engine, vessel, annual_cii_co2, annual_dist, year, cii_pressure, charter_per_day
-    )
+        cii_engine, vessel, annual_cii_co2, annual_dist, year,
+        cii_pressure, charter_per_day)
     cii_penalty = cii_annual / max(annual_fuel_scale, 1.0)
 
-    fueleu_penalty, fueleu_balance = _fueleu_blend_eval(
-        fueleu_engine, vessel, [(base_fuel, e_base), (alt_fuel, e_alt)], year
-    )
+    fueleu_penalty, fueleu_balance, fueleu_actual_int, fueleu_energy = _fueleu_blend_eval(
+        fueleu_engine, vessel, [(base_fuel, e_base), (alt_fuel, e_alt)], year)
 
     delay_cost = 0.0
     if scheduled_hours is not None and delay_cost_per_hour > 0:
@@ -620,7 +612,15 @@ def _evaluate_blend_point(
     co2e_wtw_t = (e_base * wtw_b + e_alt * wtw_a) / 1e6
     co2e_ttw_t = (_ttw_co2e_g(bef, m_base) + _ttw_co2e_g(aef, m_alt)) / 1e6
 
-    total = fuel_cost + ets_cost + fueleu_penalty + cii_penalty + delay_cost
+    # WtW-proxy carbon cost: the same carbon price applied to the fuel's
+    # *well-to-wake* CO2e instead of the ETS-covered (tank-to-wake, biogenic-
+    # zeroed) figure — i.e. an ETS-aware operator whose fuel ranking already
+    # reflects lifecycle GHG. Diagnostic counterfactual only.
+    ets_wtw_proxy = co2e_wtw_t * voyage.ets_scope_factor * ets_phase_in * eua_price
+
+    total = (fuel_cost + ets_cost
+             + fueleu_penalty * fueleu_price_fraction
+             + cii_penalty + delay_cost)
     return {
         "alt_fuel": alt_fuel.value,
         "blend_pct": float(phi),
@@ -628,14 +628,23 @@ def _evaluate_blend_point(
         "fuel_cost": fuel_cost,
         "ets_cost": ets_cost,
         "fueleu_penalty": fueleu_penalty,
+        # Unscaled statutory FuelEU term (weight 1.0). ``fueleu_penalty`` above is
+        # the credit-price-scaled value used in ``total_cost``; the full term is
+        # needed by the FuelEU planning-internalization experiment (λ_fueleu),
+        # whose full evaluation must never be scaled by λ or the credit fraction.
+        "fueleu_penalty_full": fueleu_penalty,
         "cii_penalty": cii_penalty,
         "delay_cost": delay_cost,
         "total_cost": total,
         "carbon_fuel_cost": fuel_cost + ets_cost + delay_cost,
+        "carbon_fuel_cost_wtw": fuel_cost + ets_wtw_proxy + delay_cost,
         "attained_cii": attained,
         "co2e_wtw_t": co2e_wtw_t,
         "co2e_ttw_t": co2e_ttw_t,
-        "fueleu_balance": fueleu_balance,  # signed: deficit < 0 < surplus (for pooling)
+        "fueleu_balance": fueleu_balance,   # signed: deficit < 0 < surplus (for pooling)
+        "fueleu_actual_intensity": fueleu_actual_int,
+        "fueleu_energy_mj": fueleu_energy,
+        "is_biofuel_blend": _is_biofuel(aef) and phi > 0,
     }
 
 
@@ -648,11 +657,186 @@ def _ttw_co2e_g(ef: FuelEmissionFactors | None, mass_tonnes: float) -> float:
     if ef is None:
         return mass_tonnes * 1e6 * _DEFAULT_TTW_CO2_G_PER_G
     mass_g = mass_tonnes * 1e6
-    return mass_g * (
-        ef.ttw_co2_g_per_g_fuel
-        + ef.ttw_ch4_g_per_g_fuel * GWP100["CH4"]
-        + ef.ttw_n2o_g_per_g_fuel * GWP100["N2O"]
-    )
+    return mass_g * (ef.ttw_co2_g_per_g_fuel
+                     + ef.ttw_ch4_g_per_g_fuel * GWP100["CH4"]
+                     + ef.ttw_n2o_g_per_g_fuel * GWP100["N2O"])
+
+
+def validate_planner_fueleu_internalization(value: Any) -> float:
+    """Range-validate the planner-only FuelEU internalization weight (λ_fueleu).
+
+    ``planner_fueleu_internalization`` ∈ [0, 1] is the weight a *partial planner*
+    puts on the FuelEU term at the decision stage only. It is semantically
+    separate from ``fueleu_price_fraction`` (the effective-credit-price
+    experiment): λ scales the selection objective, never the stored or reported
+    full-evaluation FuelEU penalty. Rejects negative, >1, NaN and infinite
+    values; accepts ints and floats in range."""
+    v = float(value)
+    if not math.isfinite(v):
+        raise ValueError(f"planner_fueleu_internalization must be finite, got {value!r}")
+    if not 0.0 <= v <= 1.0:
+        raise ValueError(
+            f"planner_fueleu_internalization must be in [0, 1], got {value!r}")
+    return v
+
+
+def _fuel_pathway_label(base_fuel_label: str, alt_fuel_label: str,
+                        blend_pct: float) -> str:
+    """Deterministic fuel-pathway string from the selected (base, alt, blend)
+    triple: blend_pct≈0 is pure base fuel, ≈1 is pure alternative, otherwise a
+    blend. Uses the actual selected base/alt fuels, never the energy-dominant
+    label -- a 5% biodiesel blend and a 100% biodiesel switch must not collapse
+    to the same label."""
+    if blend_pct <= 1e-9:
+        return f"{base_fuel_label}_only"
+    if blend_pct >= 1.0 - 1e-9:
+        return f"{alt_fuel_label}_only"
+    return f"{base_fuel_label}+{alt_fuel_label}"
+
+
+def _energy_dominant_fuel(base_fuel_label: str, alt_fuel_label: str,
+                          blend_pct: float) -> str:
+    """Descriptive-only energy-dominant fuel label -- the component holding the
+    larger energy share. Never used to define fuel pathway."""
+    return alt_fuel_label if blend_pct >= 0.5 else base_fuel_label
+
+
+def partial_planner_decision(
+    profile: pd.DataFrame,
+    lambda_fueleu: float,
+    include_cii_in_objective: bool,
+    base_fuel: FuelType = FuelType.VLSFO,
+) -> dict[str, Any]:
+    """Partial-planner decision and planning regret vs the full FuelEU benchmark.
+
+    Models a planner who only partially internalizes the FuelEU cost signal at
+    decision time: it minimises ``base + λ·F`` (base = fuel + ETS + delay; F =
+    full statutory FuelEU term, weight 1.0) over the SAME candidate set the joint
+    optimizer evaluates, and both the partial decision and the full benchmark
+    (λ = 1) are then evaluated under the full FuelEU term. ``profile`` is the
+    candidate component table built by
+    :func:`optimal_fuel_blend_speed_multi_regulation` (or a frame with the same
+    columns), so candidate evaluations are never repeated across λ.
+
+    ``include_cii_in_objective`` mirrors the joint optimizer's switch: the
+    primary case keeps the CII-proxy consequence out of both objectives AND out
+    of the full evaluation (a clean zero-regret endpoint at λ = 1); an optional
+    variant holds it at full weight everywhere instead.
+
+    Determinism: ties on the partial score follow the repository's existing
+    rule — ``Series.idxmin()`` returns the first candidate in the enumeration
+    order (menu × blend × speed), so the same candidate set and objective values
+    produce the same decision across reruns.
+
+    Never multiplies the stored or reported full-evaluation FuelEU penalty by λ
+    and is independent of ``fueleu_price_fraction``."""
+    lam = validate_planner_fueleu_internalization(lambda_fueleu)
+    if profile is None or len(profile) == 0:
+        raise ValueError("partial_planner_decision requires a non-empty profile")
+
+    def _full_cost(row: pd.Series) -> float:
+        """Full-policy evaluation of one candidate: base + FuelEU (weight 1.0),
+        plus the CII consequence only when the case includes it."""
+        c = float(row["fuel_cost"] + row["ets_cost"] + row["delay_cost"]
+                  + row["fueleu_penalty_full"])
+        if include_cii_in_objective:
+            c += float(row["cii_penalty"])
+        return c
+
+    cii_w = profile["cii_penalty"] if include_cii_in_objective else 0.0
+    benchmark_score = (profile["fuel_cost"] + profile["ets_cost"]
+                       + profile["delay_cost"] + profile["fueleu_penalty_full"] + cii_w)
+    partial_score = (profile["fuel_cost"] + profile["ets_cost"]
+                     + profile["delay_cost"] + lam * profile["fueleu_penalty_full"] + cii_w)
+
+    bench = profile.loc[benchmark_score.idxmin()]
+    part = profile.loc[partial_score.idxmin()]
+
+    full_bench = _full_cost(bench)
+    full_part = _full_cost(part)
+    delta = full_part - full_bench
+    rci_proxy = delta / full_part if full_part > 0 else 0.0
+    rci_joint_norm = delta / full_bench if full_bench > 0 else 0.0
+
+    fuel_match = str(part["alt_fuel"]) == str(bench["alt_fuel"])
+    speed_diff = abs(float(part["speed_knots"]) - float(bench["speed_knots"]))
+    blend_diff = abs(float(part["blend_pct"]) - float(bench["blend_pct"]))
+    full_match = fuel_match and speed_diff <= 1e-9 and blend_diff <= 1e-9
+    fuel_plan_1pp = fuel_match and blend_diff <= 0.01
+
+    part_alt = str(part["alt_fuel"])
+    bench_alt = str(bench["alt_fuel"])
+    part_blend = float(part["blend_pct"])
+    bench_blend = float(bench["blend_pct"])
+
+    return {
+        # partial-planner decision (selected under base + λ·F)
+        "partial_alt_fuel": part_alt,
+        "partial_base_fuel": base_fuel.value,
+        "partial_blend_pct": part_blend,
+        "partial_speed": float(part["speed_knots"]),
+        "partial_low_carbon_share": part_blend,
+        "partial_biofuel_share":
+            part_blend if bool(part["is_biofuel_blend"]) else 0.0,
+        # partial decision evaluated under the FULL FuelEU term (weight 1.0)
+        "partial_fuel_cost_full_eur": float(part["fuel_cost"]),
+        "partial_ets_cost_full_eur": float(part["ets_cost"]),
+        "partial_fueleu_cost_full_eur": float(part["fueleu_penalty_full"]),
+        "partial_delay_cost_full_eur": float(part["delay_cost"]),
+        "partial_total_cost_full_eur": full_part,
+        "partial_fueleu_balance": float(part["fueleu_balance"]),
+        "partial_fueleu_actual_intensity": float(part["fueleu_actual_intensity"]),
+        "partial_fueleu_energy_mj": float(part["fueleu_energy_mj"]),
+        # full benchmark decision (x_star: FuelEU weight 1.0 in selection and eval)
+        "benchmark_alt_fuel": bench_alt,
+        "benchmark_base_fuel": base_fuel.value,
+        "benchmark_blend_pct": bench_blend,
+        "benchmark_speed": float(bench["speed_knots"]),
+        "benchmark_low_carbon_share": bench_blend,
+        "benchmark_is_biofuel": bool(bench["is_biofuel_blend"]),
+        "benchmark_fuel_cost_full_eur": float(bench["fuel_cost"]),
+        "benchmark_ets_cost_full_eur": float(bench["ets_cost"]),
+        "benchmark_fueleu_cost_full_eur": float(bench["fueleu_penalty_full"]),
+        "benchmark_delay_cost_full_eur": float(bench["delay_cost"]),
+        "benchmark_total_cost_full_eur": full_bench,
+        "benchmark_fueleu_balance": float(bench["fueleu_balance"]),
+        "benchmark_fueleu_actual_intensity": float(bench["fueleu_actual_intensity"]),
+        # planning regret: full-policy cost of the partial decision minus the
+        # full benchmark, normalized two ways (vs. the partial decision's own
+        # cost, and vs. the benchmark's cost)
+        "delta_cost_eur": delta,
+        "rci_proxy": max(rci_proxy, 0.0),
+        "rci_joint_norm": max(rci_joint_norm, 0.0),
+        # decision-agreement metrics: the label match compares the
+        # alternative-fuel LABEL/pathway only (two 100%-share plans with
+        # different labels count as different; equal labels at different
+        # shares count as equal). ``fuel_plan_match_1pp`` is the COMPOSITE plan
+        # agreement: same label AND share within 1 pp — a plan metric, unlike
+        # the label or share match alone. Speed adds the full-decision
+        # tolerance on top.
+        "fuel_pathway_label_match": fuel_match,
+        "blend_share_match_1pp": blend_diff <= 0.01,
+        "fuel_plan_match_1pp": fuel_plan_1pp,
+        "speed_match_0p01kn": speed_diff <= 0.01,
+        "full_decision_match": full_match,
+        "speed_abs_diff_kn": speed_diff,
+        "blend_share_abs_diff": blend_diff,
+        "numerical_regret_nonnegative": delta >= -1e-6,
+        # Unambiguous fuel-identity fields, purely descriptive/derived from the
+        # existing (base_fuel, alt_fuel, blend_pct) selection above -- base_fuel
+        # is a single constant per call, so a "fuel pathway" is fully expressed
+        # by base+alt+blend_pct without adding a new candidate dimension.
+        "fuel_pathway_partial": _fuel_pathway_label(base_fuel.value, part_alt, part_blend),
+        "fuel_pathway_benchmark": _fuel_pathway_label(base_fuel.value, bench_alt, bench_blend),
+        "alternative_component_share_partial": part_blend,
+        "alternative_component_share_benchmark": bench_blend,
+        "energy_dominant_fuel_partial":
+            _energy_dominant_fuel(base_fuel.value, part_alt, part_blend),
+        "energy_dominant_fuel_benchmark":
+            _energy_dominant_fuel(base_fuel.value, bench_alt, bench_blend),
+        "full_decision_exact": full_match,
+        "full_decision_1pp_0p01kn": fuel_plan_1pp and speed_diff <= 0.01,
+    }
 
 
 def optimal_fuel_blend_speed_multi_regulation(
@@ -675,6 +859,12 @@ def optimal_fuel_blend_speed_multi_regulation(
     scheduled_hours: float | None = None,
     cii_pressure: float = _DEFAULT_CII_PRESSURE,
     extended_fuels: bool = False,
+    silo_carbon_basis: str = "ttw_ets",
+    include_cii_in_objective: bool = True,
+    max_biofuel_share: float | None = None,
+    energy_scale: float = 1.0,
+    fueleu_price_fraction: float = 1.0,
+    planner_fueleu_internalization: float = 0.0,
 ) -> dict[str, Any]:
     """Joint (blend × speed) optimisation vs a carbon-only siloed baseline.
 
@@ -683,7 +873,24 @@ def optimal_fuel_blend_speed_multi_regulation(
     total cost over all four regulations; siloed minimises fuel+ETS+delay (carbon
     priced only via ETS, blind to FuelEU/CII). RCI = fractional overpayment of the
     siloed operator. Reports the joint low-carbon blend fraction.
+
+    Revision switches (all default to the headline behaviour):
+
+    * ``silo_carbon_basis`` — ``"ttw_ets"`` (default) ranks the siloed operator's
+      fuels by ETS-covered tank-to-wake CO2; ``"wtw_proxy"`` ranks them by
+      well-to-wake CO2e at the same carbon price.
+    * ``include_cii_in_objective`` — drop the modelled CII consequence from the
+      joint objective (clean ETS+FuelEU planning loss only).
+    * ``max_biofuel_share`` — cap the energy fraction of bio-derived fuels.
+    * ``energy_scale`` — per-vessel MRV-anchoring multiplier.
+    * ``planner_fueleu_internalization`` (λ_fueleu) — FuelEU planning-integration
+      weight used ONLY to select the partial-planner decision ``argmin(base +
+      λ·F)``; the partial decision and the full benchmark are always evaluated at
+      the full statutory FuelEU term (weight 1.0, independent of
+      ``fueleu_price_fraction``). Default 0.0 makes the partial decision coincide
+      with the siloed decision and leaves every pre-existing output unchanged.
     """
+    validate_planner_fueleu_internalization(planner_fueleu_internalization)
     menu = fuel_options or fuel_menu(vessel, extended=extended_fuels)
     alts = [f for f in menu if f != base_fuel]
     if not alts:
@@ -711,54 +918,131 @@ def optimal_fuel_blend_speed_multi_regulation(
         alt_price = fuel_prices.get(alt.value, fuel_prices.get(alt))
         if alt_price is None:
             continue
+        alt_is_biofuel = _is_biofuel(fuel_factors.get(alt))
         for phi in phis:
+            # cap the energy share of bio-derived fuels
+            if (max_biofuel_share is not None and alt_is_biofuel
+                    and float(phi) > max_biofuel_share + 1e-9):
+                continue
             for spd in speeds:
                 row = _evaluate_blend_point(
-                    vessel,
-                    voyage,
-                    base_fuel,
-                    alt,
-                    float(phi),
-                    float(spd),
-                    float(base_price),
-                    float(alt_price),
-                    eua_price,
-                    fuel_factors,
-                    cii_engine,
-                    fueleu_engine,
-                    ets_phase_in,
-                    year,
-                    annual_dist,
-                    annual_fuel_scale,
-                    cii_pressure,
-                    charter_per_day,
-                    delay_cost_per_hour,
-                    scheduled_hours,
-                )
+                    vessel, voyage, base_fuel, alt, float(phi), float(spd),
+                    float(base_price), float(alt_price), eua_price, fuel_factors,
+                    cii_engine, fueleu_engine, ets_phase_in, year, annual_dist,
+                    annual_fuel_scale, cii_pressure, charter_per_day,
+                    delay_cost_per_hour, scheduled_hours, energy_scale=energy_scale,
+                    fueleu_price_fraction=fueleu_price_fraction)
                 rows.append(row)
 
     if not rows:
         return {}
 
     df = pd.DataFrame(rows)
-    joint = df.loc[df["total_cost"].idxmin()]
-    siloed = df.loc[df["carbon_fuel_cost"].idxmin()]
-    cost_joint = float(joint["total_cost"])
-    cost_siloed = float(siloed["total_cost"])
+    # Joint objective: full burden, optionally excluding the modelled CII
+    # consequence. Siloed objective: carbon ranked by ETS (TtW) or by a WtW
+    # proxy; always evaluated on the full burden afterwards.
+    objective = (df["total_cost"] - df["cii_penalty"]
+                 if not include_cii_in_objective else df["total_cost"])
+    silo_col = "carbon_fuel_cost_wtw" if silo_carbon_basis == "wtw_proxy" else "carbon_fuel_cost"
+    joint = df.loc[objective.idxmin()]
+    siloed = df.loc[df[silo_col].idxmin()]
+    cost_joint = float(objective.loc[objective.idxmin()])
+    cost_siloed = float(siloed["total_cost"] - (
+        siloed["cii_penalty"] if not include_cii_in_objective else 0.0))
     rci = (cost_siloed - cost_joint) / cost_siloed if cost_siloed > 0 else 0.0
+
+    delta_c = cost_siloed - cost_joint
+    rci_joint = delta_c / cost_joint if cost_joint > 0 else 0.0
+
+    # FuelEU planning-internalization block: the partial-planner decision at
+    # λ_fueleu over the SAME candidate set. Purely additive — joint/siloed
+    # selection, costs and RCI above are untouched, so existing experiments are
+    # numerically unchanged when the new parameter is omitted (default λ = 0,
+    # which reproduces the siloed decision).
+    ppd = partial_planner_decision(
+        df, planner_fueleu_internalization, include_cii_in_objective, base_fuel)
 
     return {
         "joint_alt_fuel": str(joint["alt_fuel"]),
         "joint_blend_pct": float(joint["blend_pct"]),
         "joint_speed": float(joint["speed_knots"]),
+        "siloed_alt_fuel": str(siloed["alt_fuel"]),
         "siloed_blend_pct": float(siloed["blend_pct"]),
         "siloed_speed": float(siloed["speed_knots"]),
         "cost_joint_eur": cost_joint,
         "cost_siloed_eur": cost_siloed,
-        "rci": max(rci, 0.0),
+        "delta_cost_eur": delta_c,
+        "rci": max(rci, 0.0),          # = delta_C / C_joint(x_silo)
+        "rci_joint": max(rci_joint, 0.0),  # = delta_C / C_joint(x_joint)
         "blends": float(joint["blend_pct"]) > 0.01,
+        # joint-point cost components
+        "fuel_cost_joint_eur": float(joint["fuel_cost"]),
+        "ets_cost_joint_eur": float(joint["ets_cost"]),
+        "fueleu_penalty_joint_eur": float(joint["fueleu_penalty"]),
+        "cii_consequence_joint_eur": float(joint["cii_penalty"]),
+        "delay_cost_joint_eur": float(joint["delay_cost"]),
+        # siloed-point cost components (evaluated under all instruments)
+        "fuel_cost_siloed_eur": float(siloed["fuel_cost"]),
+        "ets_cost_siloed_eur": float(siloed["ets_cost"]),
+        "fueleu_penalty_siloed_eur": float(siloed["fueleu_penalty"]),
+        "cii_consequence_siloed_eur": float(siloed["cii_penalty"]),
+        "delay_cost_siloed_eur": float(siloed["delay_cost"]),
+        # backward-compatible aliases (joint-point)
         "ets_cost_eur": float(joint["ets_cost"]),
         "fueleu_penalty_eur": float(joint["fueleu_penalty"]),
         "cii_penalty_eur": float(joint["cii_penalty"]),
+        # FuelEU pooling inputs: signed balance, actual WtW intensity and energy
+        # at each decision point, so a fleet/type-level pool penalty can be
+        # recomputed in post-processing without re-optimising.
+        "fueleu_balance_joint": float(joint["fueleu_balance"]),
+        "fueleu_actual_intensity_joint": float(joint["fueleu_actual_intensity"]),
+        "fueleu_energy_mj_joint": float(joint["fueleu_energy_mj"]),
+        "fueleu_balance_siloed": float(siloed["fueleu_balance"]),
+        "fueleu_actual_intensity_siloed": float(siloed["fueleu_actual_intensity"]),
+        "fueleu_energy_mj_siloed": float(siloed["fueleu_energy_mj"]),
+        # low-carbon / biofuel energy shares at each decision point
+        "low_carbon_share_joint": float(joint["blend_pct"]),
+        "low_carbon_share_siloed": float(siloed["blend_pct"]),
+        "biofuel_share_joint":
+            float(joint["blend_pct"]) if bool(joint["is_biofuel_blend"]) else 0.0,
+        "biofuel_share_siloed":
+            float(siloed["blend_pct"]) if bool(siloed["is_biofuel_blend"]) else 0.0,
+        # FuelEU planning-internalization block (additive; see above)
+        "partial_alt_fuel": ppd["partial_alt_fuel"],
+        "partial_base_fuel": ppd["partial_base_fuel"],
+        "partial_blend_pct": ppd["partial_blend_pct"],
+        "partial_speed": ppd["partial_speed"],
+        "partial_low_carbon_share": ppd["partial_low_carbon_share"],
+        "partial_biofuel_share": ppd["partial_biofuel_share"],
+        "partial_fuel_cost_full_eur": ppd["partial_fuel_cost_full_eur"],
+        "partial_ets_cost_full_eur": ppd["partial_ets_cost_full_eur"],
+        "partial_fueleu_cost_full_eur": ppd["partial_fueleu_cost_full_eur"],
+        "partial_delay_cost_full_eur": ppd["partial_delay_cost_full_eur"],
+        "partial_total_cost_full_eur": ppd["partial_total_cost_full_eur"],
+        "partial_fueleu_balance": ppd["partial_fueleu_balance"],
+        "partial_fueleu_actual_intensity": ppd["partial_fueleu_actual_intensity"],
+        "partial_fueleu_energy_mj": ppd["partial_fueleu_energy_mj"],
+        "delta_cost_partial_eur": ppd["delta_cost_eur"],
+        "rci_partial": ppd["rci_proxy"],
+        "rci_partial_joint_norm": ppd["rci_joint_norm"],
+        "fuel_pathway_label_match": ppd["fuel_pathway_label_match"],
+        "blend_share_match_1pp": ppd["blend_share_match_1pp"],
+        "fuel_plan_match_1pp": ppd["fuel_plan_match_1pp"],
+        "speed_match_0p01kn": ppd["speed_match_0p01kn"],
+        "full_decision_match": ppd["full_decision_match"],
+        "speed_abs_diff_kn": ppd["speed_abs_diff_kn"],
+        "blend_share_abs_diff": ppd["blend_share_abs_diff"],
+        "numerical_regret_nonnegative": ppd["numerical_regret_nonnegative"],
+        # unambiguous fuel-identity fields (see partial_planner_decision above)
+        "benchmark_base_fuel": ppd["benchmark_base_fuel"],
+        "benchmark_low_carbon_share": ppd["benchmark_low_carbon_share"],
+        "fuel_pathway_partial": ppd["fuel_pathway_partial"],
+        "fuel_pathway_benchmark": ppd["fuel_pathway_benchmark"],
+        "alternative_component_share_partial": ppd["alternative_component_share_partial"],
+        "alternative_component_share_benchmark": ppd["alternative_component_share_benchmark"],
+        "energy_dominant_fuel_partial": ppd["energy_dominant_fuel_partial"],
+        "energy_dominant_fuel_benchmark": ppd["energy_dominant_fuel_benchmark"],
+        "full_decision_exact": ppd["full_decision_exact"],
+        "full_decision_1pp_0p01kn": ppd["full_decision_1pp_0p01kn"],
         "profile": df,
     }

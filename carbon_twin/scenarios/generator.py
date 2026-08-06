@@ -83,9 +83,7 @@ def load_scenario(path: str | Path) -> Scenario:
         fuel_prices=fuel_prices,
         regulation_versions=reg_versions,
         imo_nzf_params=imo_nzf if isinstance(imo_nzf, dict) else {},
-        uncertainty={str(k): float(v) for k, v in uncertainty.items()}
-        if isinstance(uncertainty, dict)
-        else {},
+        uncertainty={str(k): float(v) for k, v in uncertainty.items()} if isinstance(uncertainty, dict) else {},
         metadata={"source": str(path)},
     )
 
@@ -171,7 +169,7 @@ def generate_random_scenarios(
         elif dist == "lognormal":
             mean = dist_spec.get("mean", 1.0)
             std = dist_spec.get("std", 0.5)
-            mu = np.log(mean**2 / np.sqrt(mean**2 + std**2))
+            mu = np.log(mean ** 2 / np.sqrt(mean ** 2 + std ** 2))
             sigma = np.sqrt(np.log(1 + (std / mean) ** 2))
             sampled_values[param_name] = rng.lognormal(mu, sigma, n)
         elif dist == "uniform":

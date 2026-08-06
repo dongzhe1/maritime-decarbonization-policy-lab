@@ -47,9 +47,13 @@ class MRVCalibrator:
         mrv_annual : DataFrame
             Columns: imo_number, year, total_co2_tonnes.
         """
-        proxy_annual = voyages_with_proxy.groupby(["vessel_imo", "year"], as_index=False).agg(
-            proxy_sum=("proxy_emission_tonnes", "sum"),
-            num_voyages=("voyage_id", "nunique"),
+        proxy_annual = (
+            voyages_with_proxy
+            .groupby(["vessel_imo", "year"], as_index=False)
+            .agg(
+                proxy_sum=("proxy_emission_tonnes", "sum"),
+                num_voyages=("voyage_id", "nunique"),
+            )
         )
 
         merged = proxy_annual.merge(
@@ -114,8 +118,10 @@ class MRVCalibrator:
         """Evaluate calibration quality at annual vessel level."""
         adjusted = self.transform(voyages_with_proxy)
 
-        pred_annual = adjusted.groupby(["vessel_imo", "year"], as_index=False).agg(
-            predicted_total=("adjusted_emission_tonnes", "sum")
+        pred_annual = (
+            adjusted
+            .groupby(["vessel_imo", "year"], as_index=False)
+            .agg(predicted_total=("adjusted_emission_tonnes", "sum"))
         )
 
         merged = pred_annual.merge(
@@ -141,8 +147,10 @@ class MRVCalibrator:
     # ------------------------------------------------------------------
 
     def _fit_simple_ratio(self, merged: pd.DataFrame) -> None:
-        self._vessel_ratios = merged.groupby("vessel_imo", as_index=False).agg(
-            ratio=("ratio", "median")
+        self._vessel_ratios = (
+            merged
+            .groupby("vessel_imo", as_index=False)
+            .agg(ratio=("ratio", "median"))
         )
 
     def _transform_simple_ratio(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -165,7 +173,8 @@ class MRVCalibrator:
         voyages: pd.DataFrame,
     ) -> None:
         vessel_types = (
-            voyages[["vessel_imo", "ship_type"]].drop_duplicates("vessel_imo")
+            voyages[["vessel_imo", "ship_type"]]
+            .drop_duplicates("vessel_imo")
             if "ship_type" in voyages.columns
             else pd.DataFrame(columns=["vessel_imo", "ship_type"])
         )
@@ -203,7 +212,8 @@ class MRVCalibrator:
             + lambda2 * ship_type_smoothness
         """
         vessel_types = (
-            voyages[["vessel_imo", "ship_type"]].drop_duplicates("vessel_imo")
+            voyages[["vessel_imo", "ship_type"]]
+            .drop_duplicates("vessel_imo")
             if "ship_type" in voyages.columns
             else pd.DataFrame(columns=["vessel_imo", "ship_type"])
         )
@@ -237,18 +247,14 @@ class MRVCalibrator:
         model.fit(X, y)
 
         coefs = model.coef_
-        vessel_effects = pd.DataFrame(
-            {
-                "vessel_imo": vessel_ids,
-                "vessel_alpha": coefs[:n_vessels],
-            }
-        )
-        ship_type_effects = pd.DataFrame(
-            {
-                "ship_type": ship_types,
-                "ship_type_beta": coefs[n_vessels : n_vessels + n_st],
-            }
-        )
+        vessel_effects = pd.DataFrame({
+            "vessel_imo": vessel_ids,
+            "vessel_alpha": coefs[:n_vessels],
+        })
+        ship_type_effects = pd.DataFrame({
+            "ship_type": ship_types,
+            "ship_type_beta": coefs[n_vessels:n_vessels + n_st],
+        })
 
         vessel_effects = vessel_effects.merge(
             data[["vessel_imo", "ship_type"]].drop_duplicates("vessel_imo"),
@@ -271,7 +277,9 @@ class MRVCalibrator:
             df["adjusted_emission_tonnes"] = df["proxy_emission_tonnes"]
             return df
 
-        ve = self._hierarchical_model["vessel_effects"][["vessel_imo", "combined_factor"]].copy()
+        ve = self._hierarchical_model["vessel_effects"][
+            ["vessel_imo", "combined_factor"]
+        ].copy()
         df = df.merge(ve, on="vessel_imo", how="left")
         df["combined_factor"] = df["combined_factor"].fillna(self._global_ratio)
         df["adjusted_emission_tonnes"] = df["proxy_emission_tonnes"] * df["combined_factor"]
@@ -300,6 +308,7 @@ class MRVCalibrator:
                 vf = voyages[["vessel_imo", col]].drop_duplicates("vessel_imo")
                 vessel_features = vessel_features.merge(vf, on="vessel_imo", how="left")
 
+        agg_cols: dict[str, tuple[str, str]] = {"num_voyages": ("num_voyages", "mean")}
         if "distance_nm" in voyages.columns:
             dist_agg = voyages.groupby("vessel_imo", as_index=False).agg(
                 total_distance=("distance_nm", "sum")
@@ -356,12 +365,14 @@ class MRVCalibrator:
 
         # Aggregate proxy_sum and num_voyages at vessel-year level for features
         if "proxy_sum" not in work.columns:
-            proxy_agg = work.groupby(["vessel_imo", "year"], as_index=False).agg(
-                proxy_sum=("proxy_emission_tonnes", "sum"), num_voyages=("voyage_id", "nunique")
+            proxy_agg = (
+                work.groupby(["vessel_imo", "year"], as_index=False)
+                .agg(proxy_sum=("proxy_emission_tonnes", "sum"),
+                      num_voyages=("voyage_id", "nunique"))
             )
             work = work.merge(proxy_agg, on=["vessel_imo", "year"], how="left")
 
-        [c for c in self._gb_feature_cols if c in work.columns]
+        available = [c for c in self._gb_feature_cols if c in work.columns]
         missing = [c for c in self._gb_feature_cols if c not in work.columns]
         for c in missing:
             work[c] = 0

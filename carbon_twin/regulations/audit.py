@@ -18,9 +18,7 @@ from carbon_twin.data.schemas import UnifiedComplianceResult
 class AuditEntry:
     """Single audit record for a regulation calculation."""
 
-    timestamp: str = field(
-        default_factory=lambda: dt.datetime.utcnow().isoformat(timespec="seconds")
-    )
+    timestamp: str = field(default_factory=lambda: dt.datetime.utcnow().isoformat(timespec="seconds"))
     regulation: str = ""
     version: str = ""
     vessel_imo: str = ""
@@ -52,13 +50,8 @@ class AuditLog:
         if not self._entries:
             return pd.DataFrame(
                 columns=[
-                    "timestamp",
-                    "regulation",
-                    "version",
-                    "vessel_imo",
-                    "inputs_hash",
-                    "params_hash",
-                    "result_summary",
+                    "timestamp", "regulation", "version", "vessel_imo",
+                    "inputs_hash", "params_hash", "result_summary",
                 ]
             )
         return pd.DataFrame([asdict(e) for e in self._entries])

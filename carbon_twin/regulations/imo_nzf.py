@@ -115,7 +115,10 @@ class IMONZFScenarioEngine:
         ghg_prices: list[float],
     ) -> list[IMONZFResult]:
         """Run the same vessel scenario across multiple GHG price points."""
-        return [self.evaluate(vessel, energy, fuels, factors, year, price) for price in ghg_prices]
+        return [
+            self.evaluate(vessel, energy, fuels, factors, year, price)
+            for price in ghg_prices
+        ]
 
     # ------------------------------------------------------------------
     # Internal

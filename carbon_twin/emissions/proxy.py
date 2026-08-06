@@ -1,7 +1,21 @@
-"""Per-voyage proxy emissions from voyages + vessel particulars.
+"""Build per-voyage proxy emissions from voyages + vessel particulars.
 
-A physics estimate (admiralty law + SFOC) of fuel and CO2 per voyage, left
-uncalibrated so the MRV calibrator can learn the correction to THETIS-MRV totals.
+This is the shared bridge between AIS-derived voyages and everything downstream:
+
+    voyages (AIS) + fleet (particulars) ──physics──► per-voyage proxy emissions
+                                                          │
+                          ┌───────────────────────────────┼───────────────────┐
+                          ▼                                ▼                   ▼
+                 02 fit MRV calibrator         03 calibrate + regulations   04 train surrogate
+
+The proxy is a *physics estimate* (admiralty law + SFOC) of fuel and CO2 per
+voyage. It is deliberately uncalibrated: the MRV calibrator (job 02) learns the
+correction from these proxies to THETIS-MRV annual totals (weak supervision).
+
+The output DataFrame carries both the calibration columns
+(``vessel_imo, year, voyage_id, proxy_emission_tonnes``) and surrogate-training
+features/targets (``speed_knots, displacement_tonnes, …, co2e_ttw_tonnes``), so
+all three consumers read the same artifact.
 """
 
 from __future__ import annotations
@@ -11,7 +25,7 @@ from typing import Any
 
 import pandas as pd
 
-from carbon_twin.data.schemas import FuelType, Vessel, Voyage
+from carbon_twin.data.schemas import FuelType, ShipType, Vessel, Voyage
 from carbon_twin.emissions.factors import (
     FuelEmissionFactors,
     get_co2e_ttw,
@@ -109,39 +123,35 @@ def build_proxy_emissions(
         speed = voyage.avg_speed_knots
         if not speed or speed <= 0:
             sea = voyage.sea_hours
-            speed = (
-                (voyage.distance_nm / sea)
-                if sea and sea > 0
-                else (vessel.design_speed_knots or 14.0)
+            speed = (voyage.distance_nm / sea) if sea and sea > 0 else (
+                vessel.design_speed_knots or 14.0
             )
 
         age = (year - vessel.year_built) if vessel.year_built else 0
 
-        rows.append(
-            {
-                "vessel_imo": imo,
-                "year": year,
-                "voyage_id": voyage.voyage_id,
-                "proxy_emission_tonnes": round(co2e_ttw, 4),
-                # calibration features
-                "ship_type": vessel.ship_type.value,
-                "dwt": vessel.deadweight or 0.0,
-                "distance_nm": voyage.distance_nm,
-                # surrogate features
-                "speed_knots": round(float(speed), 3),
-                "displacement_tonnes": round(_estimate_displacement(vessel), 1),
-                "draught_m": voyage.draught_m or vessel.draught_m or 0.0,
-                "age_years": age,
-                "weather_factor": weather,
-                "ets_scope_factor": voyage.ets_scope_factor,
-                "eea_scope": voyage.eea_scope.value,
-                "energy_mj": energy_mj,
-                # surrogate targets
-                "fuel_tonnes": fuel_t,
-                "co2e_ttw_tonnes": round(co2e_ttw, 4),
-                "co2e_wtw_tonnes": round(co2e_wtw, 4),
-            }
-        )
+        rows.append({
+            "vessel_imo": imo,
+            "year": year,
+            "voyage_id": voyage.voyage_id,
+            "proxy_emission_tonnes": round(co2e_ttw, 4),
+            # calibration features
+            "ship_type": vessel.ship_type.value,
+            "dwt": vessel.deadweight or 0.0,
+            "distance_nm": voyage.distance_nm,
+            # surrogate features
+            "speed_knots": round(float(speed), 3),
+            "displacement_tonnes": round(_estimate_displacement(vessel), 1),
+            "draught_m": voyage.draught_m or vessel.draught_m or 0.0,
+            "age_years": age,
+            "weather_factor": weather,
+            "ets_scope_factor": voyage.ets_scope_factor,
+            "eea_scope": voyage.eea_scope.value,
+            "energy_mj": energy_mj,
+            # surrogate targets
+            "fuel_tonnes": fuel_t,
+            "co2e_ttw_tonnes": round(co2e_ttw, 4),
+            "co2e_wtw_tonnes": round(co2e_wtw, 4),
+        })
 
     out = pd.DataFrame(rows)
     out.attrs["skipped"] = skipped

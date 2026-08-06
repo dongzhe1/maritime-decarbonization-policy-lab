@@ -23,15 +23,15 @@ class UncertaintySpec:
         elif self.distribution == "lognormal":
             mean = self.kwargs["mean"]
             std = self.kwargs["std"]
-            mu = np.log(mean**2 / np.sqrt(std**2 + mean**2))
-            sigma = np.sqrt(np.log(1 + std**2 / mean**2))
+            mu = np.log(mean ** 2 / np.sqrt(std ** 2 + mean ** 2))
+            sigma = np.sqrt(np.log(1 + std ** 2 / mean ** 2))
             return float(rng.lognormal(mu, sigma))
         elif self.distribution == "uniform":
             return float(rng.uniform(self.kwargs["low"], self.kwargs["high"]))
         elif self.distribution == "triangular":
-            return float(
-                rng.triangular(self.kwargs["left"], self.kwargs["mode"], self.kwargs["right"])
-            )
+            return float(rng.triangular(
+                self.kwargs["left"], self.kwargs["mode"], self.kwargs["right"]
+            ))
         elif self.distribution == "beta":
             return float(rng.beta(self.kwargs.get("a", 2.0), self.kwargs.get("b", 5.0)))
         elif self.distribution == "discrete":
@@ -47,13 +47,15 @@ class UncertaintySpec:
         elif self.distribution == "lognormal":
             mean = self.kwargs["mean"]
             std = self.kwargs["std"]
-            mu = np.log(mean**2 / np.sqrt(std**2 + mean**2))
-            sigma = np.sqrt(np.log(1 + std**2 / mean**2))
+            mu = np.log(mean ** 2 / np.sqrt(std ** 2 + mean ** 2))
+            sigma = np.sqrt(np.log(1 + std ** 2 / mean ** 2))
             return rng.lognormal(mu, sigma, n)
         elif self.distribution == "uniform":
             return rng.uniform(self.kwargs["low"], self.kwargs["high"], n)
         elif self.distribution == "triangular":
-            return rng.triangular(self.kwargs["left"], self.kwargs["mode"], self.kwargs["right"], n)
+            return rng.triangular(
+                self.kwargs["left"], self.kwargs["mode"], self.kwargs["right"], n
+            )
         elif self.distribution == "beta":
             return rng.beta(self.kwargs.get("a", 2.0), self.kwargs.get("b", 5.0), n)
         elif self.distribution == "discrete":
@@ -156,7 +158,9 @@ class MonteCarloEngine:
             sampled_arrays[spec.param_name] = spec.sample_array(rng, self.n_samples)
 
         for i in range(self.n_samples):
-            param_values = {name: float(arr[i]) for name, arr in sampled_arrays.items()}
+            param_values = {
+                name: float(arr[i]) for name, arr in sampled_arrays.items()
+            }
 
             try:
                 if self._base_scenario is not None:
@@ -212,9 +216,9 @@ class MonteCarloEngine:
             }
 
         output_cols = [
-            c
-            for c in self._results.columns
-            if c not in input_cols and self._results[c].dtype in (np.float64, np.int64, float, int)
+            c for c in self._results.columns
+            if c not in input_cols
+            and self._results[c].dtype in (np.float64, np.int64, float, int)
         ]
 
         stats: dict[str, dict[str, float]] = {}
@@ -246,9 +250,7 @@ class MonteCarloEngine:
 
         if metric is None:
             candidates = [
-                "total_cost_eur",
-                "total_cost",
-                "compliance_cost",
+                "total_cost_eur", "total_cost", "compliance_cost",
                 "total_compliance_cost_eur",
             ]
             for c in candidates:
@@ -260,8 +262,7 @@ class MonteCarloEngine:
                 for spec in self.uncertainties:
                     input_cols.add(f"input_{spec.param_name}")
                 numeric_cols = [
-                    c
-                    for c in self._results.columns
+                    c for c in self._results.columns
                     if c not in input_cols
                     and self._results[c].dtype in (np.float64, np.int64, float, int)
                 ]
@@ -287,9 +288,7 @@ class MonteCarloEngine:
 
         if metric is None:
             candidates = [
-                "total_cost_eur",
-                "total_cost",
-                "compliance_cost",
+                "total_cost_eur", "total_cost", "compliance_cost",
                 "total_compliance_cost_eur",
             ]
             for c in candidates:
@@ -318,27 +317,21 @@ class MonteCarloEngine:
             high_mask = valid[input_col] >= p90
 
             low_mean = float(valid.loc[low_mask, metric].mean()) if low_mask.any() else float("nan")
-            high_mean = (
-                float(valid.loc[high_mask, metric].mean()) if high_mask.any() else float("nan")
-            )
+            high_mean = float(valid.loc[high_mask, metric].mean()) if high_mask.any() else float("nan")
 
-            swing = (
-                abs(high_mean - low_mean)
-                if not (np.isnan(high_mean) or np.isnan(low_mean))
-                else 0.0
-            )
+            swing = abs(high_mean - low_mean) if not (
+                np.isnan(high_mean) or np.isnan(low_mean)
+            ) else 0.0
 
-            rows.append(
-                {
-                    "parameter": spec.param_name,
-                    "correlation": float(corr) if not np.isnan(corr) else 0.0,
-                    "low_input": float(p10),
-                    "high_input": float(p90),
-                    "low_10pct_mean": low_mean,
-                    "high_90pct_mean": high_mean,
-                    "swing": swing,
-                }
-            )
+            rows.append({
+                "parameter": spec.param_name,
+                "correlation": float(corr) if not np.isnan(corr) else 0.0,
+                "low_input": float(p10),
+                "high_input": float(p90),
+                "low_10pct_mean": low_mean,
+                "high_90pct_mean": high_mean,
+                "swing": swing,
+            })
 
         df = pd.DataFrame(rows)
         if not df.empty:

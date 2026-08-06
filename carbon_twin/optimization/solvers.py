@@ -188,17 +188,15 @@ def decomposition_solve(
 
         gap = (upper_bound - lower_bound) / max(abs(upper_bound), 1e-10)
 
-        history.append(
-            {
-                "iteration": iteration,
-                "lower_bound": lower_bound,
-                "upper_bound": upper_bound,
-                "gap": gap,
-                "master_obj": master_obj,
-                "sub_obj": sub_obj,
-                "feasible": sub_result.get("feasible", True),
-            }
-        )
+        history.append({
+            "iteration": iteration,
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+            "gap": gap,
+            "master_obj": master_obj,
+            "sub_obj": sub_obj,
+            "feasible": sub_result.get("feasible", True),
+        })
 
         if gap <= gap_tolerance:
             break

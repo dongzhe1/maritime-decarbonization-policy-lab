@@ -13,6 +13,8 @@ from carbon_twin.data.schemas import (
     FuelType,
     ShipType,
     UnifiedComplianceResult,
+    Vessel,
+    Voyage,
 )
 from carbon_twin.emissions.surrogate import EmissionSurrogate
 
@@ -80,19 +82,10 @@ class FleetTransitionOptimizer:
 
         vessels = [v.imo_number for v in self._fleet.vessels]
         years = list(range(self._base_year, self._base_year + self._horizon))
-        fuels = [
-            ft.value
-            for ft in FuelType
-            if ft
-            in (
-                FuelType.VLSFO,
-                FuelType.LNG,
-                FuelType.METHANOL_BIO,
-                FuelType.METHANOL_E,
-                FuelType.AMMONIA_GREEN,
-                FuelType.BIODIESEL_FAME,
-            )
-        ]
+        fuels = [ft.value for ft in FuelType if ft in (
+            FuelType.VLSFO, FuelType.LNG, FuelType.METHANOL_BIO,
+            FuelType.METHANOL_E, FuelType.AMMONIA_GREEN, FuelType.BIODIESEL_FAME,
+        )]
         retrofits = [r.name for r in self._retrofit_options]
 
         model.V = pyo.Set(initialize=vessels)
@@ -127,7 +120,7 @@ class FleetTransitionOptimizer:
             r.name: r.fuel_saving_pct / 100.0 for r in self._retrofit_options
         }
 
-        {v.imo_number: v for v in self._fleet.vessels}
+        vessel_map = {v.imo_number: v for v in self._fleet.vessels}
         _base_fuel_tonnes: dict[str, float] = {}
         for v in self._fleet.vessels:
             gt = v.gross_tonnage
@@ -147,12 +140,11 @@ class FleetTransitionOptimizer:
         model.retrofit_once = pyo.Constraint(model.V, model.R, rule=retrofit_once_rule)
 
         if self._budget_per_year is not None:
-
             def budget_rule(m: Any, y: int) -> Any:
-                return (
-                    sum(m.retrofit[v, y, r] * _retrofit_cost.get(r, 0.0) for v in m.V for r in m.R)
-                    <= self._budget_per_year
-                )
+                return sum(
+                    m.retrofit[v, y, r] * _retrofit_cost.get(r, 0.0)
+                    for v in m.V for r in m.R
+                ) <= self._budget_per_year
 
             model.budget = pyo.Constraint(model.Y, rule=budget_rule)
 
@@ -163,12 +155,11 @@ class FleetTransitionOptimizer:
                 for y in m.Y:
                     year_idx = y - self._base_year
                     eua = eua_base * (1 + eua_growth) ** year_idx
-                    discount = 1.0 / (1.08**year_idx)
+                    discount = 1.0 / (1.08 ** year_idx)
 
-                    sum(
+                    retrofit_saving = sum(
                         m.retrofit[v, yy, r] * _retrofit_saving.get(r, 0.0)
-                        for yy in m.Y
-                        for r in m.R
+                        for yy in m.Y for r in m.R
                         if yy <= y
                     )
 
@@ -220,8 +211,6 @@ class FleetTransitionOptimizer:
 
         rows: list[dict[str, Any]] = []
 
-        from carbon_twin.optimization.solvers import solve_milp
-
         for w in emission_weights:
             try:
                 model = self.build_model()
@@ -234,29 +223,28 @@ class FleetTransitionOptimizer:
                 def weighted_obj(m: Any) -> Any:
                     cost_term = original_obj.expr
                     emission_term = sum(
-                        m.fuel_frac[v, y, f] * 100.0 for v in m.V for y in m.Y for f in m.F
+                        m.fuel_frac[v, y, f] * 100.0
+                        for v in m.V for y in m.Y for f in m.F
                     )
                     return cost_term + w * emission_term * 1e6
 
                 model.obj = pyo.Objective(rule=weighted_obj, sense=pyo.minimize)
 
+                from carbon_twin.optimization.solvers import solve_milp
+
                 result = solve_milp(model, solver="glpk", time_limit=60)
 
-                rows.append(
-                    {
-                        "emission_weight": w,
-                        "total_cost": result.get("objective_value", float("inf")),
-                        "status": result.get("status", "unknown"),
-                    }
-                )
+                rows.append({
+                    "emission_weight": w,
+                    "total_cost": result.get("objective_value", float("inf")),
+                    "status": result.get("status", "unknown"),
+                })
             except Exception as e:
-                rows.append(
-                    {
-                        "emission_weight": w,
-                        "total_cost": float("inf"),
-                        "status": f"error: {e}",
-                    }
-                )
+                rows.append({
+                    "emission_weight": w,
+                    "total_cost": float("inf"),
+                    "status": f"error: {e}",
+                })
 
         return pd.DataFrame(rows)
 
@@ -315,9 +303,12 @@ class FleetTransitionOptimizer:
 
         # --- Surrogate path: use fitted EmissionSurrogate for fuel/emission estimates ---
         if self._surrogate is not None and self._surrogate._fitted and vessel is not None:
+            from carbon_twin.data.schemas import Voyage as _Voyage  # local import to avoid circularity
+
             # Build a minimal feature row for the surrogate
-            max(fuel_mix, key=fuel_mix.__getitem__)
+            dominant_fuel = max(fuel_mix, key=fuel_mix.__getitem__)
             # Build a minimal DataFrame matching EmissionSurrogate._FEATURE_COLS
+            import datetime
 
             feat_row: dict[str, Any] = {
                 "ship_type_code": list(ShipType).index(vessel.ship_type),
@@ -326,7 +317,7 @@ class FleetTransitionOptimizer:
                 "main_engine_power_kw": vessel.main_engine_power_kw or 0.0,
                 "design_speed_knots": vessel.design_speed_knots or 0.0,
                 "age": year - (vessel.year_built or (year - 15)),
-                "distance_nm": 1000.0,  # representative voyage
+                "distance_nm": 1000.0,   # representative voyage
                 "avg_speed_knots": speed,
                 "sea_hours": 1000.0 / max(speed, 0.1),
                 "weather_factor": 1.0,
@@ -334,7 +325,7 @@ class FleetTransitionOptimizer:
                 "draught_m": vessel.draught_m or 0.0,
                 "length_m": vessel.length_m or 0.0,
                 "beam_m": vessel.beam_m or 0.0,
-                "speed_cubed": speed**3,
+                "speed_cubed": speed ** 3,
                 "distance_x_gt": 1000.0 * vessel.gross_tonnage,
             }
             feat_df = pd.DataFrame([feat_row])

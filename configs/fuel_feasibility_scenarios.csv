@@ -1,0 +1,4 @@
+scenario,description,allowed_alt_fuels,blending_rule,retrofit_allowed,infrastructure_constraint,notes
+continuous_base,Main case: full extended menu with continuous energy-fraction blending,"MGO;BIODIESEL_FAME;LNG(gas-capable);METHANOL_BIO;METHANOL_E",continuous_energy_fraction,yes (newbuild/retrofit fuels allowed),none,current headline fuel-dimension model
+dropin_only,"Defends against the ""arbitrary blending is unrealistic"" critique: only drop-in low-carbon fuels usable without engine modification","MGO;BIODIESEL_FAME",continuous_energy_fraction,no,drop-in only,non-drop-in fuels (LNG/methanol) removed from the menu
+compatible_switch,"Defends against ""any ship can switch to any fuel"": gas-capable ships may use LNG, all ships may use liquid drop-ins","MGO;BIODIESEL_FAME;LNG(gas-capable only)",continuous_energy_fraction,no,fuel-system compatibility only,methanol/e-fuels excluded (require methanol-capable engines)

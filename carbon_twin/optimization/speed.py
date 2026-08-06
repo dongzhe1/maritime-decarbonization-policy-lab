@@ -7,21 +7,22 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from carbon_twin.data.schemas import FuelRecord, FuelType, Vessel, Voyage
+from carbon_twin.data.schemas import CIIRating, FuelRecord, FuelType, Vessel, Voyage
 from carbon_twin.emissions.factors import (
     FuelEmissionFactors,
     get_co2e_ttw,
 )
-from carbon_twin.emissions.physics import (
-    VesselActivity,
-    _estimate_displacement,
-    aux_engine_fuel_rate,
-    estimate_admiralty_coeff,
-    main_engine_fuel_rate,
-)
 
 # Energy content of one tonne of VLSFO-equivalent (MJ); FuelEU Annex IV constant.
 _VLSFO_ENERGY_MJ_PER_TONNE: float = 41000.0
+from carbon_twin.emissions.physics import (
+    _estimate_displacement,
+    estimate_admiralty_coeff,
+    main_engine_fuel_rate,
+    aux_engine_fuel_rate,
+    VesselActivity,
+)
+
 
 # Slow-steaming floor as a fraction of design speed. Since power ∝ speed³, a
 # 0.5×design floor corresponds to ~12% MCR — the practical super-slow-steaming
@@ -31,7 +32,9 @@ _MIN_SPEED_FRACTION: float = 0.5
 _ABS_MIN_SPEED: float = 6.0
 
 
-def speed_bounds(vessel: Vessel, operating_speed: float | None = None) -> tuple[float, float]:
+def speed_bounds(
+    vessel: Vessel, operating_speed: float | None = None
+) -> tuple[float, float]:
     """Realistic per-vessel optimization band [v_min, v_max] in knots.
 
     Replaces the flat (8, 22) band that let every vessel rail to an unrealistic
@@ -63,7 +66,7 @@ def _me_power_at_speed(vessel: Vessel, speed_knots: float) -> float:
     ac = estimate_admiralty_coeff(vessel)
     if speed_knots <= 0:
         return 0.0
-    power = (displacement ** (2 / 3) * speed_knots**3) / ac
+    power = (displacement ** (2 / 3) * speed_knots ** 3) / ac
     age = 0
     if vessel.year_built:
         age = 2026 - vessel.year_built
@@ -113,6 +116,7 @@ def optimal_speed_single_voyage(
     fuel_type: FuelType = FuelType.VLSFO,
     delay_cost_per_hour: float = 0.0,
     scheduled_hours: float | None = None,
+    energy_scale: float = 1.0,
 ) -> dict[str, Any]:
     """Brute-force speed optimization over a grid.
 
@@ -128,8 +132,9 @@ def optimal_speed_single_voyage(
 
     for spd in speeds:
         fc = _fuel_at_speed(vessel, voyage, float(spd), fuel_type, fuel_factors)
-        fuel_cost = fc["total_tonnes"] * fuel_price
-        co2e = get_co2e_ttw(fuel_type, fc["total_tonnes"], fuel_factors)
+        scaled_t = fc["total_tonnes"] * energy_scale
+        fuel_cost = scaled_t * fuel_price
+        co2e = get_co2e_ttw(fuel_type, scaled_t, fuel_factors)
         ets_cost = co2e * ets_scope * eua_price
 
         delay_cost = 0.0
@@ -141,7 +146,7 @@ def optimal_speed_single_voyage(
 
         row = {
             "speed_knots": float(spd),
-            "fuel_tonnes": fc["total_tonnes"],
+            "fuel_tonnes": scaled_t,
             "fuel_cost": fuel_cost,
             "ets_cost": ets_cost,
             "delay_cost": delay_cost,
@@ -189,18 +194,16 @@ def speed_cost_curve(
         fuel_cost = fc["total_tonnes"] * fuel_price
         co2e = get_co2e_ttw(fuel_type, fc["total_tonnes"], fuel_factors)
         ets_cost = co2e * ets_scope * eua_price
-        rows.append(
-            {
-                "speed_knots": float(spd),
-                "fuel_tonnes": fc["total_tonnes"],
-                "fuel_cost": fuel_cost,
-                "ets_cost": ets_cost,
-                "total_cost": fuel_cost + ets_cost,
-                "co2e_tonnes": co2e,
-                "sea_hours": fc["sea_hours"],
-                "energy_mj": fc["energy_mj"],
-            }
-        )
+        rows.append({
+            "speed_knots": float(spd),
+            "fuel_tonnes": fc["total_tonnes"],
+            "fuel_cost": fuel_cost,
+            "ets_cost": ets_cost,
+            "total_cost": fuel_cost + ets_cost,
+            "co2e_tonnes": co2e,
+            "sea_hours": fc["sea_hours"],
+            "energy_mj": fc["energy_mj"],
+        })
 
     return pd.DataFrame(rows)
 
@@ -212,7 +215,6 @@ def _cii_capacity(vessel: Vessel) -> float:
     denominator and the rating always agree (see _cii_annual_penalty)."""
     try:
         from carbon_twin.regulations.cii import CIIEngine
-
         return CIIEngine.capacity_for(vessel)
     except Exception:
         if vessel.deadweight and vessel.deadweight > 0:
@@ -226,7 +228,8 @@ def _cii_capacity(vessel: Vessel) -> float:
 # discontinuity and an undefendable magnitude) with a continuous, interpretable
 # cost. `cii_pressure` (k) is the discount sensitivity and the single knob for
 # the RCI sensitivity sweep; default 0.2 ≈ a ~2–3% charter discount for a solidly
-# D/E vessel — consistent with emerging charter-market signals.
+# D/E vessel — consistent with emerging charter-market signals. See
+# docs/coupling_model_design.md.
 _DEFAULT_CII_PRESSURE: float = 0.2
 _CII_OPERATING_DAYS: float = 300.0
 
@@ -239,6 +242,7 @@ def _cii_annual_penalty(
     year: int,
     cii_pressure: float,
     charter_per_day: float,
+    cii_rho_multiplier: float = 1.0,
 ) -> tuple[float, float]:
     """Return (annual_penalty_eur, attained_cii).
 
@@ -267,7 +271,10 @@ def _cii_annual_penalty(
         )
         attained = result.attained_cii
         ratio_cd = cii_engine.cd_boundary_ratio(vessel.ship_type.value, vessel.deadweight)
-        excess = max(0.0, result.ratio - ratio_cd)
+        # cii_rho_multiplier scales the attained/required ratio to probe the
+        # EU-MRV-vs-official-CII scope bias (1.0 = neutral; see configs/
+        # mrv_cii_proxy_bias_scenarios.csv).
+        excess = max(0.0, result.ratio * cii_rho_multiplier - ratio_cd)
     except Exception:
         return 0.0, attained
 
@@ -338,6 +345,8 @@ def optimal_speed_multi_regulation(
     delay_cost_per_hour: float = 0.0,
     scheduled_hours: float | None = None,
     cii_pressure: float = _DEFAULT_CII_PRESSURE,
+    cii_rho_multiplier: float = 1.0,
+    energy_scale: float = 1.0,
 ) -> dict[str, Any]:
     """Speed optimization including CII impact in annual context.
 
@@ -373,8 +382,13 @@ def optimal_speed_multi_regulation(
 
     for spd in speeds:
         fc = _fuel_at_speed(vessel, voyage, float(spd), fuel_type, fuel_factors)
-        fuel_cost = fc["total_tonnes"] * fuel_price
-        co2e = get_co2e_ttw(fuel_type, fc["total_tonnes"], fuel_factors)
+        # energy_scale: MRV-calibration multiplier; scales fuel mass/energy so the
+        # vessel's baseline emissions are anchored to its MRV-reported CO2 while
+        # preserving the cubic-law speed elasticity. Delay cost is time-based, unscaled.
+        scaled_tonnes = fc["total_tonnes"] * energy_scale
+        scaled_energy = fc["energy_mj"] * energy_scale
+        fuel_cost = scaled_tonnes * fuel_price
+        co2e = get_co2e_ttw(fuel_type, scaled_tonnes, fuel_factors)
         ets_cost = co2e * ets_scope * ets_phase_in * eua_price
 
         annual_co2 = co2e * annual_fuel_scale
@@ -383,19 +397,14 @@ def optimal_speed_multi_regulation(
         # context then scaled to the representative leg so it sits on the same
         # basis as fuel/ETS (which are per-leg).
         cii_annual, attained_cii = _cii_annual_penalty(
-            cii_engine,
-            vessel,
-            annual_co2,
-            annual_dist,
-            year,
-            cii_pressure,
-            charter_per_day,
+            cii_engine, vessel, annual_co2, annual_dist, year,
+            cii_pressure, charter_per_day, cii_rho_multiplier,
         )
         cii_penalty = cii_annual / max(annual_fuel_scale, 1.0)
 
         # ---- FuelEU: penalty from the engine (Annex IV formula).
         fueleu_penalty = _fueleu_penalty(
-            fueleu_engine, vessel, fuel_type, fc["energy_mj"], year, fuel_factors
+            fueleu_engine, vessel, fuel_type, scaled_energy, year, fuel_factors
         )
 
         delay_cost = 0.0
@@ -407,7 +416,7 @@ def optimal_speed_multi_regulation(
 
         row = {
             "speed_knots": float(spd),
-            "fuel_tonnes": fc["total_tonnes"],
+            "fuel_tonnes": scaled_tonnes,
             "fuel_cost": fuel_cost,
             "ets_cost": ets_cost,
             "fueleu_penalty": fueleu_penalty,

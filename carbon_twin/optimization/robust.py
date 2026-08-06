@@ -12,13 +12,13 @@ import numpy as np
 import pandas as pd
 
 from carbon_twin.data.schemas import FuelType, Vessel, Voyage
-from carbon_twin.emissions.factors import get_co2e_ttw
+from carbon_twin.emissions.factors import FuelEmissionFactors, get_co2e_ttw
 from carbon_twin.optimization.speed import _fuel_at_speed
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
 
 def _voyage_cost(
     vessel: Vessel,
@@ -63,7 +63,6 @@ def _optimal_cost_at_scenario(
 # Public functions
 # ---------------------------------------------------------------------------
 
-
 def minimax_regret_speed(
     vessel: Vessel,
     voyage: Voyage,
@@ -105,15 +104,13 @@ def minimax_regret_speed(
             for si, spd in enumerate(speeds):
                 c = _voyage_cost(vessel, voyage, float(spd), fuel_factors, eua, fuel_p, fuel_type)
                 regret_matrix[si, scenario_idx] = max(c - scenario_optimal[scenario_idx], 0.0)
-                speed_profile_rows.append(
-                    {
-                        "speed_knots": float(spd),
-                        "eua_price": eua,
-                        "fuel_price": fuel_p,
-                        "cost": c,
-                        "regret": regret_matrix[si, scenario_idx],
-                    }
-                )
+                speed_profile_rows.append({
+                    "speed_knots": float(spd),
+                    "eua_price": eua,
+                    "fuel_price": fuel_p,
+                    "cost": c,
+                    "regret": regret_matrix[si, scenario_idx],
+                })
             scenario_idx += 1
 
     max_regrets = regret_matrix.max(axis=1)
@@ -123,13 +120,11 @@ def minimax_regret_speed(
     optimal_speed = float(speeds[best_idx])
     max_regret = float(max_regrets[best_idx])
 
-    regret_profile = pd.DataFrame(
-        {
-            "speed_knots": [float(s) for s in speeds],
-            "max_regret": max_regrets.tolist(),
-            "mean_regret": mean_regrets.tolist(),
-        }
-    )
+    regret_profile = pd.DataFrame({
+        "speed_knots": [float(s) for s in speeds],
+        "max_regret": max_regrets.tolist(),
+        "mean_regret": mean_regrets.tolist(),
+    })
 
     return {
         "optimal_speed": optimal_speed,
@@ -185,34 +180,23 @@ def cvar_speed_optimization(
     profile_rows: list[dict] = []
 
     for spd in speeds:
-        costs = np.array(
-            [
-                _voyage_cost(
-                    vessel,
-                    voyage,
-                    float(spd),
-                    fuel_factors,
-                    float(eua_samples[i]),
-                    float(fuel_samples[i]),
-                    fuel_type,
-                )
-                for i in range(n_samples)
-            ]
-        )
+        costs = np.array([
+            _voyage_cost(vessel, voyage, float(spd), fuel_factors, float(eua_samples[i]),
+                         float(fuel_samples[i]), fuel_type)
+            for i in range(n_samples)
+        ])
         expected_cost = float(costs.mean())
         threshold = float(np.percentile(costs, 100 * (1 - alpha)))
         tail = costs[costs >= threshold]
         cvar = float(tail.mean()) if len(tail) > 0 else float(costs.max())
         objective = expected_cost + lambda_cvar * cvar
 
-        profile_rows.append(
-            {
-                "speed_knots": float(spd),
-                "expected_cost": expected_cost,
-                "cvar": cvar,
-                "total_objective": objective,
-            }
-        )
+        profile_rows.append({
+            "speed_knots": float(spd),
+            "expected_cost": expected_cost,
+            "cvar": cvar,
+            "total_objective": objective,
+        })
 
         if objective < best_objective:
             best_objective = objective
@@ -312,14 +296,12 @@ def regulation_coupling_index(
     # RCI: normalised by three-fold of joint cost
     rci = (sum_individual - 3.0 * joint_cost) / (3.0 * joint_cost) if joint_cost > 0 else 0.0
 
-    costs_df = pd.DataFrame(
-        [
-            {"strategy": "joint", "speed": joint_speed, "cost": joint_cost},
-            {"strategy": "ets_only", "speed": ets_speed, "cost": ets_at_joint_cost},
-            {"strategy": "cii_only", "speed": cii_speed, "cost": cii_at_joint_cost},
-            {"strategy": "fueleu_only", "speed": fueleu_speed, "cost": fueleu_at_joint_cost},
-        ]
-    )
+    costs_df = pd.DataFrame([
+        {"strategy": "joint",    "speed": joint_speed,   "cost": joint_cost},
+        {"strategy": "ets_only", "speed": ets_speed,     "cost": ets_at_joint_cost},
+        {"strategy": "cii_only", "speed": cii_speed,     "cost": cii_at_joint_cost},
+        {"strategy": "fueleu_only", "speed": fueleu_speed, "cost": fueleu_at_joint_cost},
+    ])
 
     return {
         "rci": round(rci, 6),
@@ -397,15 +379,13 @@ def robust_compliance_frontier(
         cvar_cost = float(tail.mean()) if len(tail) > 0 else worst_case_cost
         expected_co2e = float(co2e_arr.mean())
 
-        rows.append(
-            {
-                "speed": float(spd),
-                "expected_cost": expected_cost,
-                "cvar_cost": cvar_cost,
-                "worst_case_cost": worst_case_cost,
-                "expected_co2e": expected_co2e,
-            }
-        )
+        rows.append({
+            "speed": float(spd),
+            "expected_cost": expected_cost,
+            "cvar_cost": cvar_cost,
+            "worst_case_cost": worst_case_cost,
+            "expected_co2e": expected_co2e,
+        })
 
     df = pd.DataFrame(rows)
     if df.empty:
@@ -421,10 +401,8 @@ def robust_compliance_frontier(
         for j in range(len(df)):
             if i == j:
                 continue
-            if (
-                costs[j] <= costs[i]
-                and co2es[j] <= co2es[i]
-                and (costs[j] < costs[i] or co2es[j] < co2es[i])
+            if costs[j] <= costs[i] and co2es[j] <= co2es[i] and (
+                costs[j] < costs[i] or co2es[j] < co2es[i]
             ):
                 is_pareto[i] = False
                 break

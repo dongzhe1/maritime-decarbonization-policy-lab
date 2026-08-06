@@ -1,12 +1,29 @@
-"""Metrics derived from one blend-optimiser profile per vessel: abatement gap and
-marginal abatement cost (AE-1), FuelEU-redundancy breakeven carbon price (AE-2),
-and FuelEU-vs-CII attribution of the RCI (AE-3).
+"""Applied-Energy-flavoured metrics derived from one blend-optimiser profile.
 
-The ETS cost is linear in the EUA price and every other cost component is EUA-
-independent, so one reference profile reconstructs all costs at any EUA, making
-the carbon-price sweep and breakeven search analytic.
+The fuel × speed blend optimiser (``optimal_fuel_blend_speed_multi_regulation``)
+returns a ``profile`` DataFrame: every (alt_fuel, blend φ, speed) point with its
+cost components and physical emissions. Three things the energy-transition framing
+needs are all derivable from that single profile per vessel:
+
+  AE-1  Abatement & MAC — WtW CO2e abated by the joint vs the carbon-only (siloed)
+        fuel choice relative to a do-nothing VLSFO baseline, and the marginal
+        abatement cost. The *abatement gap* (extra WtW the siloed operator leaves
+        on the table by ignoring FuelEU/CII) is the headline energy quantity.
+
+  AE-2  Regulatory-overlap / FuelEU-redundancy breakeven — the carbon price above
+        which a FuelEU-blind operator already buys the joint-optimal fuel on ETS
+        grounds alone (RCI → 0), i.e. where the EU ETS makes FuelEU redundant for
+        the fuel decision. Generalises the ~€175/t LNG→FAME crossover.
+
+  AE-3  Instrument attribution — how much of the siloed operator's overpayment
+        (RCI) is due to ignoring FuelEU vs ignoring CII, by re-selecting the
+        operator's optimum under partial awareness, all from the same profile.
+
+Key efficiency: the EU ETS cost is **exactly linear in the EUA price** and every
+other cost component is EUA-independent, so a profile computed at one reference
+EUA reconstructs total/carbon costs at any EUA analytically — the whole carbon-
+price sweep (and the breakeven search) is free given one profile per vessel.
 """
-
 from __future__ import annotations
 
 from typing import Any
@@ -49,17 +66,16 @@ def ae_vessel_metrics(
     delay = df["delay_cost"].to_numpy()
     wtw = df["co2e_wtw_t"].to_numpy()
     ttw = df["co2e_ttw_t"].to_numpy()
-    feu_bal = (
-        df["fueleu_balance"].to_numpy() if "fueleu_balance" in df.columns else np.zeros(len(df))
-    )
+    feu_bal = (df["fueleu_balance"].to_numpy() if "fueleu_balance" in df.columns
+               else np.zeros(len(df)))
     phi = df["blend_pct"].to_numpy()
     altf = df["alt_fuel"].to_numpy()
     is_base = phi <= 1e-9
 
-    indep_total = fuel + fueleu + cii + delay  # full burden, ex-ETS
-    indep_carbon = fuel + delay  # carbon-only operator, ex-ETS
-    indep_pf = fuel + delay + fueleu  # + FuelEU-aware (blind to CII)
-    indep_pc = fuel + delay + cii  # + CII-aware (blind to FuelEU)
+    indep_total = fuel + fueleu + cii + delay   # full burden, ex-ETS
+    indep_carbon = fuel + delay                 # carbon-only operator, ex-ETS
+    indep_pf = fuel + delay + fueleu            # + FuelEU-aware (blind to CII)
+    indep_pc = fuel + delay + cii               # + CII-aware (blind to FuelEU)
     base_idx = np.where(is_base)[0]
 
     def _picks(eua: float):
@@ -105,14 +121,14 @@ def ae_vessel_metrics(
     for eua in target_euas:
         tot, i_j, i_c, i_pf, i_pc, i_b = _picks(float(eua))
         rci_c = _rci(tot, i_c, i_j)
-        rci_pf = _rci(tot, i_pf, i_j)  # residual coupling after FuelEU-awareness
-        rci_pc = _rci(tot, i_pc, i_j)  # residual coupling after CII-awareness
+        rci_pf = _rci(tot, i_pf, i_j)   # residual coupling after FuelEU-awareness
+        rci_pc = _rci(tot, i_pc, i_j)   # residual coupling after CII-awareness
         # AE-1 — abatement & MAC of JOINT vs CARBON-ONLY (the same siloed-vs-joint
         # pair as the RCI; avoids the speed-confounded φ=0 baseline, since the
         # carbon-only operator ignores CII and steams faster). Joint emits less
         # and (minimising the superset objective) costs no more → MAC ≤ 0:
         # negative-cost abatement once compliance penalties are internalised.
-        ab_gap = float(wtw[i_c] - wtw[i_j])  # extra WtW the siloed operator emits
+        ab_gap = float(wtw[i_c] - wtw[i_j])     # extra WtW the siloed operator emits
         cost_delta = float(tot[i_j] - tot[i_c])  # joint − siloed full burden (≤0)
         mac_gap = cost_delta / ab_gap if abs(ab_gap) > 1e-9 else float("nan")
         gap_frac = ab_gap / wtw[i_c] if wtw[i_c] > 1e-9 else 0.0
@@ -125,42 +141,38 @@ def ae_vessel_metrics(
         res_joint = float(fuel[i_j] + delay[i_j])
         res_carbon = float(fuel[i_c] + delay[i_c])
         resource_mac = (res_joint - res_carbon) / ab_gap if abs(ab_gap) > 1e-9 else float("nan")
-        rows.append(
-            {
-                "eua": float(eua),
-                # AE-3 attribution
-                "rci_carbon_only": rci_c,
-                "rci_after_fueleu": rci_pf,
-                "rci_after_cii": rci_pc,
-                "attrib_fueleu": (rci_c - rci_pf) / rci_c if rci_c > 1e-12 else 0.0,
-                "attrib_cii": (rci_c - rci_pc) / rci_c if rci_c > 1e-12 else 0.0,
-                "joint_fuel": str(altf[i_j]),
-                "joint_blend": float(phi[i_j]),
-                "carbon_fuel": str(altf[i_c]),
-                "carbon_blend": float(phi[i_c]),
-                # AE-1 abatement & MAC (WtW CO2e tonnes, per representative leg)
-                "co2e_wtw_joint_t": float(wtw[i_j]),
-                "co2e_wtw_carbon_t": float(wtw[i_c]),
-                "co2e_wtw_baseline_t": float(wtw[i_b]),  # φ=0 fossil ref (context only)
-                "co2e_ttw_joint_t": float(ttw[i_j]),
-                "abatement_gap_t": ab_gap,
-                "abatement_gap_frac": gap_frac,
-                "resource_cost_joint_eur": res_joint,
-                "resource_cost_carbon_eur": res_carbon,
-                "resource_mac_eur_per_t": resource_mac,
-                # FuelEU penalty + signed balance at each pick (for fleet pooling, AE-2b)
-                "fueleu_penalty_joint_eur": float(fueleu[i_j]),
-                "fueleu_penalty_carbon_eur": float(fueleu[i_c]),
-                "fueleu_balance_joint": float(feu_bal[i_j]),
-                "fueleu_balance_carbon": float(feu_bal[i_c]),
-                "mac_gap_eur_per_t": mac_gap,
-                "cost_joint_eur": float(tot[i_j]),
-                "cost_carbon_eur": float(tot[i_c]),
-                # AE-2 redundancy
-                "redundant": _redundant(tot, i_j, i_c, i_b),
-                "breakeven_eua": breakeven,
-            }
-        )
+        rows.append({
+            "eua": float(eua),
+            # AE-3 attribution
+            "rci_carbon_only": rci_c,
+            "rci_after_fueleu": rci_pf,
+            "rci_after_cii": rci_pc,
+            "attrib_fueleu": (rci_c - rci_pf) / rci_c if rci_c > 1e-12 else 0.0,
+            "attrib_cii": (rci_c - rci_pc) / rci_c if rci_c > 1e-12 else 0.0,
+            "joint_fuel": str(altf[i_j]), "joint_blend": float(phi[i_j]),
+            "carbon_fuel": str(altf[i_c]), "carbon_blend": float(phi[i_c]),
+            # AE-1 abatement & MAC (WtW CO2e tonnes, per representative leg)
+            "co2e_wtw_joint_t": float(wtw[i_j]),
+            "co2e_wtw_carbon_t": float(wtw[i_c]),
+            "co2e_wtw_baseline_t": float(wtw[i_b]),   # φ=0 fossil ref (context only)
+            "co2e_ttw_joint_t": float(ttw[i_j]),
+            "abatement_gap_t": ab_gap,
+            "abatement_gap_frac": gap_frac,
+            "resource_cost_joint_eur": res_joint,
+            "resource_cost_carbon_eur": res_carbon,
+            "resource_mac_eur_per_t": resource_mac,
+            # FuelEU penalty + signed balance at each pick (for fleet pooling, AE-2b)
+            "fueleu_penalty_joint_eur": float(fueleu[i_j]),
+            "fueleu_penalty_carbon_eur": float(fueleu[i_c]),
+            "fueleu_balance_joint": float(feu_bal[i_j]),
+            "fueleu_balance_carbon": float(feu_bal[i_c]),
+            "mac_gap_eur_per_t": mac_gap,
+            "cost_joint_eur": float(tot[i_j]),
+            "cost_carbon_eur": float(tot[i_c]),
+            # AE-2 redundancy
+            "redundant": _redundant(tot, i_j, i_c, i_b),
+            "breakeven_eua": breakeven,
+        })
     return rows
 
 

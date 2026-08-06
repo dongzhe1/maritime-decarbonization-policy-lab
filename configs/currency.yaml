@@ -1,0 +1,9 @@
+# Single numeraire for every monetary term in the objective (EUR).
+# Fuel prices (configs/fuel_prices.yaml, USD/tonne) and charter day-rates
+# (USD/day, driving delay cost + the modelled CII commercial consequence) are
+# converted to EUR with usd_to_eur. EU ETS (EUR/tCO2e) and FuelEU penalties (EUR)
+# are already in EUR and are not converted.
+numeraire: EUR
+eur_usd_2024_average: 1.0824        # 1 EUR = 1.0824 USD
+usd_to_eur: 0.9239                  # = 1 / 1.0824
+source: "ECB euro foreign-exchange reference rate, 2024 annual average (EUR/USD = 1.0824)"

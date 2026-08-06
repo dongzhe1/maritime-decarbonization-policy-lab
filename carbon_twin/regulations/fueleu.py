@@ -138,7 +138,9 @@ class FuelEUEngine:
         """Positive = surplus, negative = deficit."""
         return (target - actual) * energy_mj
 
-    def _compute_penalty(self, deficit_balance: float, actual_intensity: float, year: int) -> float:
+    def _compute_penalty(
+        self, deficit_balance: float, actual_intensity: float, year: int
+    ) -> float:
         """Penalty for non-compliance per Regulation (EU) 2023/1805, Annex IV.
 
         ``deficit_balance`` is the compliance balance in gCO2e (negative when in
@@ -229,7 +231,9 @@ class FuelEUEngine:
                     update={
                         "compliance_balance": round(pooled_balance, 2),
                         "surplus": pooled_balance >= 0,
-                        "pooling_contribution": round(pooled_balance - r.compliance_balance, 2),
+                        "pooling_contribution": round(
+                            pooled_balance - r.compliance_balance, 2
+                        ),
                         "penalty_eur": 0.0 if pooled_balance >= 0 else r.penalty_eur,
                     }
                 )

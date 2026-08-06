@@ -7,6 +7,7 @@ from typing import Any
 from carbon_twin.data.schemas import (
     CIIRating,
     CIIResult,
+    ShipType,
     Vessel,
 )
 from carbon_twin.regulations.versioning import RegulationVersionManager
@@ -22,56 +23,61 @@ from carbon_twin.regulations.versioning import RegulationVersionManager
 # ro-ro family and cruise use GT. Size thresholds are in the type's own basis
 # (DWT for gas/LNG/general-cargo; GT for vehicle carriers).
 _REFERENCE_LINES: dict[str, list[tuple[float, float, float, str]]] = {
-    "bulk_carrier": [(0.0, 4745.0, 0.622, "dwt")],
-    "gas_carrier": [(65000.0, 14405e7, 2.071, "dwt"), (0.0, 8104.0, 0.639, "dwt")],
-    "tanker": [(0.0, 5247.0, 0.610, "dwt")],
-    "container_ship": [(0.0, 1984.0, 0.489, "dwt")],
-    "general_cargo": [(20000.0, 31948.0, 0.792, "dwt"), (0.0, 588.0, 0.3885, "dwt")],
-    "refrigerated_cargo": [(0.0, 4600.0, 0.557, "dwt")],
-    "combination_carrier": [(0.0, 5119.0, 0.622, "dwt")],
-    "lng_carrier": [
-        (100000.0, 9.827, 0.000, "dwt"),
-        (65000.0, 14479e10, 2.673, "dwt"),
-        (0.0, 14779e10, 2.673, "dwt"),
-    ],
-    "ro_ro_cargo": [(0.0, 1967.0, 0.485, "gt")],
+    "bulk_carrier":        [(0.0,      4745.0,    0.622,  "dwt")],
+    "gas_carrier":         [(65000.0,  14405e7,   2.071,  "dwt"),
+                            (0.0,      8104.0,    0.639,  "dwt")],
+    "tanker":              [(0.0,      5247.0,    0.610,  "dwt")],
+    "container_ship":      [(0.0,      1984.0,    0.489,  "dwt")],
+    "general_cargo":       [(20000.0,  31948.0,   0.792,  "dwt"),
+                            (0.0,      588.0,     0.3885, "dwt")],
+    "refrigerated_cargo":  [(0.0,      4600.0,    0.557,  "dwt")],
+    "combination_carrier": [(0.0,      5119.0,    0.622,  "dwt")],
+    "lng_carrier":         [(100000.0, 9.827,     0.000,  "dwt"),
+                            (65000.0,  14479e10,  2.673,  "dwt"),
+                            (0.0,      14779e10,  2.673,  "dwt")],
+    "ro_ro_cargo":         [(0.0,      1967.0,    0.485,  "gt")],
     # "Ro-ro cargo ship (vehicle carrier)": GT thresholds 57,700 / 30,000.
-    "vehicle_carrier": [(30000.0, 3627.0, 0.590, "gt"), (0.0, 330.0, 0.329, "gt")],
-    "ro_pax": [(0.0, 2023.0, 0.460, "gt")],
-    "cruise_passenger": [(0.0, 930.0, 0.383, "gt")],
+    "vehicle_carrier":     [(30000.0,  3627.0,    0.590,  "gt"),
+                            (0.0,      330.0,     0.329,  "gt")],
+    "ro_pax":              [(0.0,      2023.0,    0.460,  "gt")],
+    "cruise_passenger":    [(0.0,      930.0,     0.383,  "gt")],
 }
 
 # dd-vectors (rating boundaries), verbatim from MEPC.354(78) Table 1 (G4). These
 # are SHIP-TYPE-SPECIFIC (and size-dependent for gas/LNG) — NOT a single fleet-wide
 # vector. (cap_min[DWT], (d1, d2, d3, d4)) sorted high→low.
 _DD_VECTORS: dict[str, list[tuple[float, tuple[float, float, float, float]]]] = {
-    "bulk_carrier": [(0.0, (0.86, 0.94, 1.06, 1.18))],
-    "gas_carrier": [(65000.0, (0.81, 0.91, 1.12, 1.44)), (0.0, (0.85, 0.95, 1.06, 1.25))],
-    "tanker": [(0.0, (0.82, 0.93, 1.08, 1.28))],
-    "container_ship": [(0.0, (0.83, 0.94, 1.07, 1.19))],
-    "general_cargo": [(0.0, (0.83, 0.94, 1.06, 1.19))],
-    "refrigerated_cargo": [(0.0, (0.78, 0.91, 1.07, 1.20))],
+    "bulk_carrier":        [(0.0, (0.86, 0.94, 1.06, 1.18))],
+    "gas_carrier":         [(65000.0, (0.81, 0.91, 1.12, 1.44)),
+                            (0.0,     (0.85, 0.95, 1.06, 1.25))],
+    "tanker":              [(0.0, (0.82, 0.93, 1.08, 1.28))],
+    "container_ship":      [(0.0, (0.83, 0.94, 1.07, 1.19))],
+    "general_cargo":       [(0.0, (0.83, 0.94, 1.06, 1.19))],
+    "refrigerated_cargo":  [(0.0, (0.78, 0.91, 1.07, 1.20))],
     "combination_carrier": [(0.0, (0.87, 0.96, 1.06, 1.14))],
-    "lng_carrier": [(100000.0, (0.89, 0.98, 1.06, 1.13)), (0.0, (0.78, 0.92, 1.10, 1.37))],
-    "ro_ro_cargo": [(0.0, (0.76, 0.89, 1.08, 1.27))],
-    "vehicle_carrier": [(0.0, (0.86, 0.94, 1.06, 1.16))],
-    "ro_pax": [(0.0, (0.76, 0.92, 1.14, 1.30))],
-    "cruise_passenger": [(0.0, (0.87, 0.95, 1.06, 1.16))],
+    "lng_carrier":         [(100000.0, (0.89, 0.98, 1.06, 1.13)),
+                            (0.0,      (0.78, 0.92, 1.10, 1.37))],
+    "ro_ro_cargo":         [(0.0, (0.76, 0.89, 1.08, 1.27))],
+    "vehicle_carrier":     [(0.0, (0.86, 0.94, 1.06, 1.16))],
+    "ro_pax":              [(0.0, (0.76, 0.92, 1.14, 1.30))],
+    "cruise_passenger":    [(0.0, (0.87, 0.95, 1.06, 1.16))],
 }
-_DEFAULT_DD = (0.86, 0.94, 1.06, 1.18)  # bulk-carrier vector; last-resort fallback
+_DEFAULT_DD = (0.86, 0.94, 1.06, 1.18)   # bulk-carrier vector; last-resort fallback
 
 # Backward-compatible derived views (use the lowest/default segment).
 _REFERENCE_COEFFICIENTS: dict[str, tuple[float, float]] = {
     st: (segs[-1][1], segs[-1][2]) for st, segs in _REFERENCE_LINES.items()
 }
-_GT_BASED_TYPES: set[str] = {st for st, segs in _REFERENCE_LINES.items() if segs[-1][3] == "gt"}
+_GT_BASED_TYPES: set[str] = {
+    st for st, segs in _REFERENCE_LINES.items() if segs[-1][3] == "gt"
+}
 
 # Bounds on the capacity used in the REFERENCE LINE only (attained CII always uses
 # the actual capacity). MEPC.353(78) caps bulk at 279,000 DWT and vehicle carriers
 # at 57,700 GT; the LNG <65,000 DWT segment uses 65,000 as its reference capacity.
 _REF_CAP_BOUNDS: dict[str, tuple[float, float]] = {
-    "bulk_carrier": (0.0, 279000.0),
-    "lng_carrier": (65000.0, float("inf")),
+    "bulk_carrier":    (0.0, 279000.0),
+    "lng_carrier":     (65000.0, float("inf")),
     "vehicle_carrier": (0.0, 57700.0),
 }
 
@@ -258,10 +264,7 @@ class CIIEngine:
         return float(dd[2])
 
     def _assign_rating(
-        self,
-        attained: float,
-        required: float,
-        ship_type: str,
+        self, attained: float, required: float, ship_type: str,
         dwt: float | None = None,
     ) -> CIIRating:
         dd = self._dd_vectors(ship_type, dwt)
@@ -282,7 +285,9 @@ class CIIEngine:
         return CIIRating.E
 
     @staticmethod
-    def _distance_to_boundary(attained: float, required: float, dd_vectors: list[float]) -> float:
+    def _distance_to_boundary(
+        attained: float, required: float, dd_vectors: list[float]
+    ) -> float:
         """Signed distance from attained CII to the nearest rating boundary.
 
         Negative means attained is below (better than) the boundary; positive

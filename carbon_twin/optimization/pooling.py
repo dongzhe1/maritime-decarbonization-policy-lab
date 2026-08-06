@@ -70,45 +70,40 @@ class PoolingOptimizer:
             used_deficit.add(deficit_imo)
 
             pool_balance = sum(
-                self._results[m].compliance_balance for m in pool_members if m in self._results
+                self._results[m].compliance_balance
+                for m in pool_members
+                if m in self._results
             )
 
             penalty_without_pool = abs(deficit_balance) * self._penalty_rate()
-            penalty_with_pool = (
-                abs(pool_balance) * self._penalty_rate() if pool_balance < 0 else 0.0
-            )
+            penalty_with_pool = abs(pool_balance) * self._penalty_rate() if pool_balance < 0 else 0.0
 
-            pools.append(
-                {
-                    "pool_id": f"pool_{len(pools) + 1}",
-                    "members": pool_members,
-                    "pool_balance": pool_balance,
-                    "surplus": pool_balance >= 0,
-                    "penalty_without_pool": penalty_without_pool,
-                    "penalty_with_pool": penalty_with_pool,
-                    "savings": penalty_without_pool - penalty_with_pool,
-                }
-            )
+            pools.append({
+                "pool_id": f"pool_{len(pools) + 1}",
+                "members": pool_members,
+                "pool_balance": pool_balance,
+                "surplus": pool_balance >= 0,
+                "penalty_without_pool": penalty_without_pool,
+                "penalty_with_pool": penalty_with_pool,
+                "savings": penalty_without_pool - penalty_with_pool,
+            })
 
         unpooled = [
-            imo
-            for imo in self._vessel_imos
+            imo for imo in self._vessel_imos
             if imo not in used_surplus and imo not in used_deficit and imo in self._results
         ]
         for imo in unpooled:
             result = self._results[imo]
             if result.compliance_balance >= 0:
-                pools.append(
-                    {
-                        "pool_id": f"pool_{len(pools) + 1}",
-                        "members": [imo],
-                        "pool_balance": result.compliance_balance,
-                        "surplus": True,
-                        "penalty_without_pool": 0.0,
-                        "penalty_with_pool": 0.0,
-                        "savings": 0.0,
-                    }
-                )
+                pools.append({
+                    "pool_id": f"pool_{len(pools) + 1}",
+                    "members": [imo],
+                    "pool_balance": result.compliance_balance,
+                    "surplus": True,
+                    "penalty_without_pool": 0.0,
+                    "penalty_with_pool": 0.0,
+                    "savings": 0.0,
+                })
 
         return pools
 
@@ -136,6 +131,7 @@ class PoolingOptimizer:
     def evaluate_pool(self, pool_members: list[str]) -> dict[str, Any]:
         """Given vessel IMOs, compute pooled compliance balance."""
         total_balance = 0.0
+        total_energy = 0.0
         member_details: list[dict[str, Any]] = []
 
         for imo in pool_members:
@@ -143,14 +139,12 @@ class PoolingOptimizer:
                 continue
             result = self._results[imo]
             total_balance += result.compliance_balance
-            member_details.append(
-                {
-                    "vessel_imo": imo,
-                    "compliance_balance": result.compliance_balance,
-                    "ghg_intensity": result.actual_ghg_intensity,
-                    "target_ghg_intensity": result.target_ghg_intensity,
-                }
-            )
+            member_details.append({
+                "vessel_imo": imo,
+                "compliance_balance": result.compliance_balance,
+                "ghg_intensity": result.actual_ghg_intensity,
+                "target_ghg_intensity": result.target_ghg_intensity,
+            })
 
         penalty = abs(total_balance) * self._penalty_rate() if total_balance < 0 else 0.0
         unpooled_penalty = sum(

@@ -14,11 +14,11 @@ from carbon_twin.emissions.factors import (
     get_co2e_ttw,
 )
 from carbon_twin.emissions.physics import (
-    VesselActivity,
     _estimate_displacement,
-    aux_engine_fuel_rate,
     estimate_admiralty_coeff,
     main_engine_fuel_rate,
+    aux_engine_fuel_rate,
+    VesselActivity,
 )
 
 
@@ -67,7 +67,7 @@ def jit_speed_adjustment(
     me_max = vessel.main_engine_power_kw or float("inf")
 
     def _fuel_for_speed(speed: float, hours: float) -> float:
-        power = (displacement ** (2 / 3) * speed**3) / ac * fouling_margin
+        power = (displacement ** (2 / 3) * speed ** 3) / ac * fouling_margin
         power = min(power, me_max)
         me_rate = main_engine_fuel_rate(power)
         aux_rate = aux_engine_fuel_rate(vessel, VesselActivity.UNDERWAY)
@@ -158,7 +158,8 @@ def fleet_jit_potential(
                 continue
 
             matching_pcs = [
-                pc for pc in vessel_pcs if pc.port_id == port_id and pc.vessel_imo == imo
+                pc for pc in vessel_pcs
+                if pc.port_id == port_id and pc.vessel_imo == imo
             ]
             if not matching_pcs:
                 pc = PortCall(
@@ -194,19 +195,17 @@ def fleet_jit_potential(
             total_wait_eliminated += result["wait_hours_eliminated"]
             n_jit_voyages += 1
 
-        rows.append(
-            {
-                "vessel_imo": imo,
-                "vessel_name": vessel.name or imo,
-                "ship_type": vessel.ship_type.value,
-                "n_voyages": len(vessel_voyages),
-                "n_jit_applicable": n_jit_voyages,
-                "total_fuel_saved_tonnes": round(total_fuel_saved, 4),
-                "total_co2_saved_tonnes": round(total_co2_saved, 4),
-                "total_ets_saving_eur": round(total_ets_saving, 2),
-                "total_wait_hours_eliminated": round(total_wait_eliminated, 2),
-            }
-        )
+        rows.append({
+            "vessel_imo": imo,
+            "vessel_name": vessel.name or imo,
+            "ship_type": vessel.ship_type.value,
+            "n_voyages": len(vessel_voyages),
+            "n_jit_applicable": n_jit_voyages,
+            "total_fuel_saved_tonnes": round(total_fuel_saved, 4),
+            "total_co2_saved_tonnes": round(total_co2_saved, 4),
+            "total_ets_saving_eur": round(total_ets_saving, 2),
+            "total_wait_hours_eliminated": round(total_wait_eliminated, 2),
+        })
 
     return pd.DataFrame(rows)
 
@@ -226,16 +225,14 @@ def jit_sensitivity(
     for wait_hours in wait_hours_range:
         wait_hours = float(wait_hours)
         if wait_hours <= 0:
-            rows.append(
-                {
-                    "wait_hours": wait_hours,
-                    "fuel_saved_tonnes": 0.0,
-                    "co2_saved_tonnes": 0.0,
-                    "ets_saving_eur": 0.0,
-                    "fuel_cost_saving_eur": 0.0,
-                    "jit_speed": voyage.avg_speed_knots or 14.0,
-                }
-            )
+            rows.append({
+                "wait_hours": wait_hours,
+                "fuel_saved_tonnes": 0.0,
+                "co2_saved_tonnes": 0.0,
+                "ets_saving_eur": 0.0,
+                "fuel_cost_saving_eur": 0.0,
+                "jit_speed": voyage.avg_speed_knots or 14.0,
+            })
             continue
 
         pc = PortCall(
@@ -261,15 +258,13 @@ def jit_sensitivity(
             eua_price=eua_price,
         )
 
-        rows.append(
-            {
-                "wait_hours": wait_hours,
-                "fuel_saved_tonnes": result["fuel_saved_tonnes"],
-                "co2_saved_tonnes": result["co2_saved_tonnes"],
-                "ets_saving_eur": result["ets_saving_eur"],
-                "fuel_cost_saving_eur": result["fuel_cost_saving_eur"],
-                "jit_speed": result["jit_speed"],
-            }
-        )
+        rows.append({
+            "wait_hours": wait_hours,
+            "fuel_saved_tonnes": result["fuel_saved_tonnes"],
+            "co2_saved_tonnes": result["co2_saved_tonnes"],
+            "ets_saving_eur": result["ets_saving_eur"],
+            "fuel_cost_saving_eur": result["fuel_cost_saving_eur"],
+            "jit_speed": result["jit_speed"],
+        })
 
     return pd.DataFrame(rows)

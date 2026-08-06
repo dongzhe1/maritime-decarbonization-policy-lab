@@ -21,6 +21,12 @@ Two qualitatively different coupling dimensions emerge:
 | **Speed / operational** | CII enforcement strength *k* | RCI ≈ 0 across all *k*. Slow steaming lowers fuel burn, energy use and attained CII together — the instruments are co-monotonic, so they do not conflict on the speed decision. |
 | **Fuel / structural** | FuelEU stringency (year) | RCI large and fleet-wide (~10% in 2030, ~33% by 2045). EU ETS prices tank-to-wake CO₂ *quantity*, FuelEU prices well-to-wake GHG *intensity*, CII prices CO₂ per *transport work* — three different metrics that reward different fuels, creating genuine conflict. |
 
+A third question sits alongside these two: *if an operator's planning process only
+partially accounts for FuelEU at decision time, how much of the fuel-dimension RCI
+regret remains?* This is answered by a continuous **decision-stage internalization
+weight** (see below), rather than the earlier binary "FuelEU ignored vs. FuelEU fully
+priced-in" comparison.
+
 ## Quick start (synthetic data)
 
 You do not need the real (commercial / registration-gated) inputs to try the
@@ -220,6 +226,67 @@ The parallel sweeps (`rci_sensitivity.py`, `optimize_fuel.py`,
 `fuel_price_sensitivity.py`) accept `--workers N` to set the number of worker
 processes (default: all CPUs).
 
+## Planning-stage FuelEU internalization (λ_fueleu)
+
+`optimal_fuel_blend_speed_multi_regulation` (and the pipeline-level
+`run_fuel_optimization_from_mrv`) accept an additional, purely additive
+parameter: `planner_fueleu_internalization` (λ_fueleu ∈ [0, 1]).
+
+The **evaluation world stays fixed** at the full statutory FuelEU term
+(weight 1.0) throughout — only the *partial planner's own selection objective*
+is reduced-form weighted:
+
+```
+partial-planner selection:  argmin  fuel + ETS + delay + λ_fueleu · FuelEU
+full benchmark / evaluation: argmin  fuel + ETS + delay + 1.0 · FuelEU
+```
+
+λ_fueleu = 0 reproduces the siloed (FuelEU-blind) decision; λ_fueleu = 1
+reproduces the full joint optimum with zero regret. Intermediate values trace
+a continuous curve between the two, letting you ask *how much of the joint
+outcome is recovered as decision-stage FuelEU integration increases* —
+without conflating that with the FuelEU credit/shadow price
+(`fueleu_price_fraction`, a separate, orthogonal parameter).
+
+```python
+from carbon_twin.optimization.fuel_choice import (
+    optimal_fuel_blend_speed_multi_regulation,
+    partial_planner_decision,
+)
+
+for lam in (0.0, 0.25, 0.5, 0.75, 1.0):
+    res = optimal_fuel_blend_speed_multi_regulation(
+        vessel, voyage, fuel_prices, eua_price=80.0, fuel_factors=fuel_factors,
+        cii_engine=cii, fueleu_engine=fueleu, ets_engine=ets, year=2035,
+        extended_fuels=True, blend_steps=11,
+        planner_fueleu_internalization=lam,
+    )
+    print(f"lambda={lam:.2f}  partial_pathway={res['fuel_pathway_partial']}  "
+          f"regret_eur={res['delta_cost_partial_eur']:.0f}  "
+          f"rci_partial={res['rci_partial']:.4f}")
+```
+
+Every candidate's cost components are evaluated once per vessel-year; the λ
+sweep is a vectorised `argmin` over the same shared table
+(`partial_planner_decision`), so scanning the full grid costs no more than a
+single joint optimisation.
+
+**Unambiguous fuel identity.** Because `alt_fuel` can carry a non-zero label
+at a zero blend share (e.g. a 0%-share "MGO" candidate row), the result dict
+also reports the actual energy pathway, which must be used for any fuel-choice
+claim instead of the legacy `*_alt_fuel` / `dominant_fuel_*` label fields:
+
+| Field | Meaning |
+|---|---|
+| `fuel_pathway_partial` / `fuel_pathway_benchmark` | e.g. `"VLSFO_only"`, `"VLSFO+biodiesel_fame"` — derived from the actual `(base_fuel, alt_fuel, blend_pct)` selection |
+| `energy_dominant_fuel_partial` / `_benchmark` | descriptive-only: whichever component holds the larger energy share |
+| `full_decision_exact` / `full_decision_1pp_0p01kn` | partial ≡ benchmark exactly, or within a 1-percentage-point blend / 0.01-knot speed tolerance |
+
+See `tests/test_fueleu_internalization.py` for the full behavioural
+specification (toy analytical switching threshold, evaluation-weight
+invariant, endpoint equivalence, monotonic regret, backward compatibility,
+determinism, zero-blend fuel identity).
+
 ## Repository layout
 
 ```
@@ -247,9 +314,6 @@ verbatim from **MEPC.353(78) Table 1**. Ship-type-specific rating dd-vectors
 FuelEU Maritime parameters follow **Regulation (EU) 2023/1805**; EU ETS phase-in
 and scope follow **Directive 2003/87/EC** as amended by **Directive 2023/959**.
 
-## Citation
-
-[![DOI](https://zenodo.org/badge/1275636879.svg)](https://doi.org/10.5281/zenodo.20782697)
 
 ## Licence
 

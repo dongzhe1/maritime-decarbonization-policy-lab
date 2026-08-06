@@ -71,7 +71,9 @@ class ETSEngine:
         # Aggregate per vessel
         results: list[ETSResult] = []
         for imo, voy_results in vessel_voyage_results.items():
-            results.append(self._aggregate_vessel_annual(imo, voy_results, year, eua_price_eur))
+            results.append(
+                self._aggregate_vessel_annual(imo, voy_results, year, eua_price_eur)
+            )
         return results
 
     def evaluate_fleet(
@@ -107,7 +109,9 @@ class ETSEngine:
         # From 2026, CH4 and N2O are added on a CO2e basis -> use TtW CO2e.
         if include_non_co2:
             total_emissions = (
-                emission.co2e_ttw_tonnes if emission.co2e_ttw_tonnes > 0 else emission.co2_tonnes
+                emission.co2e_ttw_tonnes
+                if emission.co2e_ttw_tonnes > 0
+                else emission.co2_tonnes
             )
         else:
             total_emissions = emission.co2_tonnes
