@@ -4,7 +4,7 @@
     "LNG"
   ],
   "clean_objective": true,
-  "description": "Batch 3: as r1_lng_v23_prio_fb with the scope weight from the MRV voyage breakdown",
+  "description": "As r1_lng_v23_prio_fb with the scope weight from the MRV voyage breakdown",
   "exact_blend": true,
   "fueleu_factors_from_config": true,
   "fueleu_gwp": {

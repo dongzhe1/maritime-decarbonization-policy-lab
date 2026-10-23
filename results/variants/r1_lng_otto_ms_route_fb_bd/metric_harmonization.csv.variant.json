@@ -4,7 +4,7 @@
     "LNG"
   ],
   "clean_objective": true,
-  "description": "Batch 4: Otto medium-speed LNG; voyage routing; breakdown scope weight",
+  "description": "Otto medium-speed LNG; voyage routing; breakdown scope weight",
   "exact_blend": true,
   "fueleu_factors_from_config": true,
   "fueleu_gwp": {

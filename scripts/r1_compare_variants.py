@@ -377,8 +377,8 @@ _DECOMPOSITION = [
      False, "r1_lng_otto_ms"),
     ("4a + exact share candidates", False, "r1_lng_otto_ms_exact"),
     ("4b + FuelEU priority allocation", False, "r1_lng_otto_ms_prio"),
-    ("5 + VLSFO or LNG base (central variant)", False, "r1_lng_otto_ms_prio_fb"),
-    ("5b scope weight from the MRV voyage breakdown", False, "r1_lng_otto_ms_prio_fb_bd"),
+    ("5a + VLSFO or LNG base", False, "r1_lng_otto_ms_prio_fb"),
+    ("5b + scope weight from the MRV voyage breakdown (central case)", False, "r1_lng_otto_ms_prio_fb_bd"),
 ]
 
 

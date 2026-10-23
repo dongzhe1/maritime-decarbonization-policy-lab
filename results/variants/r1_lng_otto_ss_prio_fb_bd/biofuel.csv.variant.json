@@ -4,7 +4,7 @@
     "LNG"
   ],
   "clean_objective": true,
-  "description": "Batch 4: Otto slow-speed LNG (1.7%); priority allocation; breakdown scope weight",
+  "description": "Otto slow-speed LNG (1.7%); priority allocation; breakdown scope weight",
   "exact_blend": true,
   "fueleu_factors_from_config": true,
   "fueleu_gwp": {

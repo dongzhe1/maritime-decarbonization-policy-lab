@@ -4,7 +4,7 @@
     "LNG"
   ],
   "clean_objective": true,
-  "description": "Batch 4: LBSI LNG (2.6%); priority allocation; breakdown scope weight",
+  "description": "LBSI LNG (2.6%); priority allocation; breakdown scope weight",
   "exact_blend": true,
   "fueleu_factors_from_config": true,
   "fueleu_gwp": {

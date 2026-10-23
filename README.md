@@ -8,7 +8,7 @@ the full ETS–FuelEU cost, and evaluates both choices with the full cost. It co
 cost of the partial rule (planning regret) across planning weights, effective FuelEU prices, fuel
 menus, biofuel supply, LNG engine classes, allocation rules for low-carbon fuel and model variants,
 together with closed-form switching conditions and numerical checks. The code reproduces the result
-files in `results/`.
+files in `results/`; `results/README.md` describes each file and every column.
 
 ---
 
@@ -239,6 +239,7 @@ results/checks/        closed-form switching weights, per-vessel closed-form agr
                        worked regulatory examples, three-fuel and speed-grid checks
 results/data/          data audit, scope-weight check, baseline diagnostics
 results/MANIFEST.txt   rows and hashes of every result file
+results/README.md      what each result file contains, its rows and every column
 ```
 
 ### Scripts

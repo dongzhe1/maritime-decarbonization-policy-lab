@@ -4,7 +4,7 @@
     "LNG"
   ],
   "clean_objective": true,
-  "description": "Batch 2 isolation: as r1_lng_otto_ms_prio_fb with proportional (no priority) FuelEU allocation",
+  "description": "As r1_lng_otto_ms_prio_fb with proportional (no priority) FuelEU allocation",
   "exact_blend": true,
   "fueleu_factors_from_config": true,
   "fueleu_gwp": {
