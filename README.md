@@ -299,4 +299,6 @@ variant given by `--variant`; outputs of the per-variant experiments go to
 ## License
 
 Contains information from the EU MRV system published by the European Maritime Safety Agency
-(THETIS-MRV). The code is released under the MIT License (`LICENSE`).
+(THETIS-MRV). The code is released under the MIT License (`LICENSE`). The result files in
+`results/` are not covered by it: All Rights Reserved – Review Only. They may be viewed and used
+solely to review the associated manuscript and to reproduce or verify its reported results.

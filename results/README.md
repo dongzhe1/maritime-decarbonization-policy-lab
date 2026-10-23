@@ -18,6 +18,7 @@ digits of its SHA-256; `bash run.sh check` compares a new run with it.
 - [Files](#files): [`variants/`](#variants), [`comparison/`](#comparison),
   [`checks/`](#checks), [`data/`](#data)
 - [Column glossary](#column-glossary)
+- [Licence](#licence)
 
 ## Layout
 
@@ -592,3 +593,12 @@ or `max`; `<plan>` for `silo`, `siloed`, `partial` (the partial plan) or `joint`
 | `within_20pct_share`, `within_50pct_share` | fraction of ships with a modelled-to-reported CO₂ ratio within 20% or 50% of 1 |
 | `wtw_g_per_mj` | WtW intensity of the fuel, gCO₂e/MJ |
 | `year` | policy year |
+
+## Licence
+
+All Rights Reserved – Review Only. The result files may be viewed and used solely to review the
+associated manuscript and to reproduce or verify its reported results; no other use, copying,
+redistribution, publication or modification is permitted without the author's prior written
+permission. The MIT License of the code does not apply to them. The files contain information
+from the EU MRV system published by the European Maritime Safety Agency (THETIS-MRV); vessel
+particulars from a commercial register enter only in aggregate form.
