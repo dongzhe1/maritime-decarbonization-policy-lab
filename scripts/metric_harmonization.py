@@ -145,6 +145,9 @@ def _distribution(g: pd.DataFrame) -> dict:
     if "fueleu_energy_mj_joint" in g:
         e = g["fueleu_energy_mj_joint"].fillna(0.0)
         d["fleet_fueleu_energy_joint_gj"] = round(float(e.sum() / 1e3), 1)
+        if "scope_weight" in g:
+            s = g["scope_weight"]
+            e = (e / s.where(s > 0)).fillna(0.0)
         d["fleet_biofuel_energy_joint_gj"] = round(float(
             (e * g["biofuel_share_joint"].fillna(0.0)).sum() / 1e3), 1)
     if "scope_weight" in g:

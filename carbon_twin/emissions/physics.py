@@ -101,6 +101,14 @@ def estimate_admiralty_coeff(vessel: Vessel) -> float:
     return _FALLBACK_C.get(vessel.ship_type, 500.0)
 
 
+def installed_power_kw(vessel: Vessel) -> float:
+    if vessel.main_engine_power_kw and vessel.main_engine_power_kw > 0:
+        return float(vessel.main_engine_power_kw)
+    displacement = _estimate_displacement(vessel)
+    design_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
+    return float(displacement ** (2 / 3) * design_speed**3 / estimate_admiralty_coeff(vessel))
+
+
 def speed_power_curve(
     vessel: Vessel,
     speeds_knots: np.ndarray,

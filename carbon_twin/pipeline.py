@@ -85,10 +85,12 @@ def assemble_compliance_from_mrv(
         except Exception:
             pass
 
+        scope_w, scope_src = _scope_weight(r, scope_mode)
+        if scope_src == "mrv_voyage_breakdown" and annual_co2:
+            co2_ets = scope_w * annual_co2
         ets_cost = (co2_ets or 0.0) * phase_in * eua_price
 
         fueleu_balance = fueleu_penalty = None
-        scope_w, _ = _scope_weight(r, scope_mode)
         if fuel_t and fuel_t > 0:
             energy_mj = fuel_t * 1e3 * _LCV_MJ_PER_KG * scope_w
             try:
@@ -346,7 +348,8 @@ def retrofit_annual_cost(
 ) -> dict[FuelType, float] | None:
     if not capex_eur_per_kw:
         return None
-    kw = vessel.main_engine_power_kw or 0.0
+    from carbon_twin.emissions.physics import installed_power_kw
+    kw = installed_power_kw(vessel)
     cap = (fuel_capability or {}).get(str(vessel.imo_number).strip())
     out: dict[FuelType, float] = {}
     for fuel, per_kw in capex_eur_per_kw.items():
