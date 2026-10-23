@@ -241,6 +241,58 @@ results/data/          data audit, scope-weight check, baseline diagnostics
 results/MANIFEST.txt   rows and hashes of every result file
 ```
 
+### Scripts
+
+In the order `run.sh full` calls them. *Inputs* are the files of Data Requirements and the
+variant given by `--variant`; outputs of the per-variant experiments go to
+`results/variants/<variant>/`, and per-vessel tables (`.parquet`) stay in `out/runs/`.
+
+| Script | Computes | Inputs | Outputs |
+|---|---|---|---|
+| `prepare_mrv.py` | Renames the key fields of the THETIS-MRV export and lists its IMO numbers | MRV export (`.xlsx` or `.csv`) | `data/raw/mrv/2024_renamed.csv`, `mrv_imo.txt` |
+| `load_ship_info.py` | Vessel particulars from the register export: model ship type, tonnage, design speed, main-engine power, build year | `ship_info.csv`, IMO list | `fleet_ship_info.csv` |
+| `make_fake_inputs.py` | Synthetic MRV and register exports in the real formats (demo only) | – | `fake/data/raw/` |
+| `r1_fuel_capability.py` | Each vessel's LNG and methanol capability from its fuel-type and engine fields | `ship_info.csv`, fleet file | `fuel_capability.csv`, `fuel_capability_fieldonly.csv` |
+| `python -m carbon_twin.cli run-regulations-mrv` | Per-vessel compliance in the scenario year: CII proxy rating, FuelEU balance and penalty, ETS cost | MRV, fleet, scenario | `out/compliance/compliance.parquet` |
+| `r1_data_audit.py` | Sample construction (matching, filters, exclusion reasons), data dictionary, scope weight by ship type, 2026 compliance landscape of four variants | MRV, fleet | `data/data_audit/` |
+| `r1_scope_check.py` | Scope weight from the MRV voyage breakdown against the reported ETS share | MRV, fleet | `data/scope_check/` |
+| `r1_closed_form_thresholds.py` | Per-GJ cost of every fuel plan and the closed-form switching weight by variant, fuel menu, year and scope weight | `configs/` | `checks/closed_form/` |
+| `r1_worked_examples.py` | Regulatory worked examples (FuelEU penalty, ETS cost, LNG factors, scope allocation, reward factor, exact-compliance shares, annualisation), by hand and with the model code | `configs/` | `checks/worked_examples/` |
+| `baseline_diagnostics.py` | Modelled against reported CO₂, MRV-implied operating speeds, matched and unmatched ships, scope emissions, FuelEU balance audit | MRV, fleet, compliance | `data/baseline_diagnostics/` |
+| `run_fueleu_internalization_final.py` | λ sweep: the planning rule weighs FuelEU by λ from 0 to 1, refined around each switch, on 11-, 21- and 51-point share grids. `--stage matrix` runs one fuel menu (broad, compatibility, engine capability, no FAME); `--stage finalize` merges them into regret curves, switching intervals, thresholds and grid and menu checks | MRV, fleet, capability | `lambda/`, `lambda_fieldonly/` |
+| `fueleu_internalization_sweep.py` | One λ sweep cell (called by the script above); here also the refined points λ = 0.405–0.445 | MRV, fleet, capability | `lambda_refine/<menu>/` |
+| `r1_lambda_refine.py` | Merges the refined points into each vessel's switching interval | λ sweep outputs | `lambda_refine/` |
+| `metric_harmonization.py` | Regret of the ETS-only rule (M1), of a rule that values fuels at well-to-wake intensity under the allowance price (M2), and with the CII term (M0), 2026–2045; also on the engine-capability menu and on ships with scope weight ≥ 0.5 | MRV, fleet, capability | `metric_harmonization*.csv` |
+| `fueleu_credit_price_reopt.py` | Regret when FuelEU deficits are valued at 0, 25, 50, 75 and 100% of the statutory penalty, re-optimized | MRV, fleet | `credit_price*.csv` |
+| `biofuel_sensitivity.py` | Regret without FAME, without any biofuel, with biofuel capped at 10, 30 or 50% of vessel energy, and with biofuel prices 1.5 or 2 times | MRV, fleet | `biofuel*.csv` |
+| `r1_retrofit_cost_sensitivity.py` | Regret with a fixed retrofit charge (EUR per kW, annualised) for LNG and methanol on vessels without the capability | MRV, fleet, capability | `retrofit_capex*.csv` |
+| `mrv_calibration_sensitivity.py` | Regret with each vessel's baseline energy anchored to its reported CO₂; modelled-to-reported ratios | MRV, fleet | `mrv_calibration*.csv` |
+| `fuel_robustness.py` | Regret on the drop-in-only and compatibility menus, with and without the CII term; cost components by ship type | MRV, fleet, compliance, capability | `fuel_robustness/` |
+| `optimize_fuel.py` | Joint fuel and speed plan and ETS-only plan of every vessel, 2026–2045 | MRV, fleet | `fuel_dimension_by_year*.csv` |
+| `fueleu_pooling.py` | The plans of `optimize_fuel.py` with compliance balances pooled over the fleet or by ship type, or deficits valued at 25, 50 and 75% of the penalty, without re-optimization | `fuel_dimension.parquet` | `pooling*.csv` |
+| `fuel_price_sensitivity.py` | Regret across fuel-price scenarios and allowance prices of EUR50–200 (`price_surface`), and across charter-rate multipliers (`charter`) | MRV, fleet | `price_surface.csv`, `charter.csv` |
+| `rci_sensitivity.py` | Speed-only regret against the strength of the CII commercial-pressure term | MRV, fleet | `speed_k*.csv` |
+| `cii_proxy_sensitivity.py` | CII proxy rating mix and speed regret under ship-type bias scenarios of the proxy | MRV, fleet, compliance | `cii_proxy/` |
+| `speed_rci_mrv_calibration.py` | Speed-only regret in 2035 with energy calibrated to reported CO₂ | MRV, fleet | `speed_calibration*.csv` |
+| `r1_speed_grid_check.py` | Regret of every vessel of a variant on 15-, 29- and 57-point speed grids | MRV, fleet, `fuel_dimension.parquet` | `checks/speed_grid/` |
+| `r1_slim_vessel_outputs.py` | Keeps the λ = 0 rows and each vessel's closing λ from the per-vessel λ table | per-vessel λ table | `.parquet` in `out/runs/` |
+| `r1_vessel_closed_form_check.py` | Each vessel's swept switching interval against the closed form at its scope weight | slim λ tables, closed forms | `checks/vessel_closed_form/` |
+| `r1_compare_variants.py` | Cross-variant tables: regret by year, λ transitions, price and supply envelope, regret distribution, retrofit, rule × menu, cost denominators, scope sample, step-by-step specification path | all variant outputs | `comparison/` |
+| `r1_spec_factorial.py` | Regret for the eight combinations of allocation rule, blend base and scope-weight source, and the effect of each choice averaged over the orders of adding them (Shapley value) | `metric_harmonization.csv` of the eight variants | `comparison/spec_factorial*.csv` |
+| `r1_three_fuel_check.py` | Per-GJ search over mixtures of up to three fuels against the model's two-fuel plans | `configs/` | `checks/three_fuel/` |
+| `collect_results.py` | Copies the result files from `out/runs/` into the results layout | `out/runs/` | `out/results/` |
+
+### Model package
+
+| Module | Contents |
+|---|---|
+| `carbon_twin/regulations/` | CII (reference lines and rating boundaries of MEPC.353(78) and MEPC.354(78)), FuelEU Maritime (target, balance, Annex IV penalty), EU ETS (scope, phase-in), regulation versions |
+| `carbon_twin/emissions/` | Admiralty-law propulsion and fuel model, fuel and emission factors, MRV calibration |
+| `carbon_twin/optimization/` | Speed optimizer; fuel and speed optimizer with one low-carbon component, exact share candidates and the partial planning rule |
+| `carbon_twin/pipeline.py` | Per-vessel runs from MRV records: sample filters, scope weight, representative voyage, annual values |
+| `carbon_twin/model_variants.py` | Model variants defined in `configs/model_variants.yaml`; the central variant is `r1_lng_otto_ms_prio_fb_bd` |
+| `carbon_twin/data/`, `parallel.py`, `cli.py` | Loaders and schemas, parallel runs over blocks of vessels, command line |
+
 ---
 
 ## License
