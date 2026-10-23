@@ -102,6 +102,21 @@ Expected output (excerpt):
 
 ---
 
+## Tests
+
+```bash
+pytest tests
+```
+
+The tests use synthetic vessels and need no input data. They check the regulatory calculations
+(FuelEU compliance balance and penalty, ETS cost, CII), each model variant setting (LNG methane
+factors in both instruments, fuel factors reaching the optimizer, annual reporting, scope weights,
+the RFNBO reward period, LNG as a blend base, allocation rules), the planning-weight sweep and its
+refinement, the specification factorial, the three-fuel check, and that block-parallel runs equal
+serial runs. They run in about a minute.
+
+---
+
 ## Data Requirements
 
 `bash run.sh prepare` builds the three model inputs from two exports; `bash run.sh full` then
@@ -233,6 +248,7 @@ carbon_twin/           the model: regulations (CII, EU ETS, FuelEU), emissions, 
                        model variants, pipeline
 scripts/               one script per experiment, input preparation, synthetic inputs
 configs/               fuel factors, fuel prices, scenario, regulation versions, model variants
+tests/                 unit and regression tests on synthetic vessels (`pytest tests`)
 results/variants/      aggregate results of each model variant, one directory per variant
 results/comparison/    cross-variant tables, including the specification factorial
 results/checks/        closed-form switching weights, per-vessel closed-form agreement,
