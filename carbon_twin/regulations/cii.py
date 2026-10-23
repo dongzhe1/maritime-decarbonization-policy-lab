@@ -1,5 +1,3 @@
-"""CII (Carbon Intensity Indicator) calculation engine per IMO MEPC.352-355(78)."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -12,16 +10,6 @@ from carbon_twin.data.schemas import (
 )
 from carbon_twin.regulations.versioning import RegulationVersionManager
 
-# IMO reference lines, transcribed verbatim from MEPC.353(78) Table 1 (G2):
-#   CII_ref = a * capacity^(-c).
-# Several ship types are PIECEWISE: above/below a size threshold the (a, c) change.
-# Each entry is a list of segments (cap_min, a, c, basis) sorted high→low; the
-# first segment whose ``cap_min`` does not exceed the vessel's capacity-in-basis
-# applies. ``basis`` ("gt"/"dwt") governs BOTH the reference line and the attained
-# CII denominator, and is the "Capacity in CII calculation" column of MEPC.354(78)
-# Table 1 — gas carriers and general cargo use DWT for ALL segments; only the
-# ro-ro family and cruise use GT. Size thresholds are in the type's own basis
-# (DWT for gas/LNG/general-cargo; GT for vehicle carriers).
 _REFERENCE_LINES: dict[str, list[tuple[float, float, float, str]]] = {
     "bulk_carrier":        [(0.0,      4745.0,    0.622,  "dwt")],
     "gas_carrier":         [(65000.0,  14405e7,   2.071,  "dwt"),
@@ -36,16 +24,12 @@ _REFERENCE_LINES: dict[str, list[tuple[float, float, float, str]]] = {
                             (65000.0,  14479e10,  2.673,  "dwt"),
                             (0.0,      14779e10,  2.673,  "dwt")],
     "ro_ro_cargo":         [(0.0,      1967.0,    0.485,  "gt")],
-    # "Ro-ro cargo ship (vehicle carrier)": GT thresholds 57,700 / 30,000.
     "vehicle_carrier":     [(30000.0,  3627.0,    0.590,  "gt"),
                             (0.0,      330.0,     0.329,  "gt")],
     "ro_pax":              [(0.0,      2023.0,    0.460,  "gt")],
     "cruise_passenger":    [(0.0,      930.0,     0.383,  "gt")],
 }
 
-# dd-vectors (rating boundaries), verbatim from MEPC.354(78) Table 1 (G4). These
-# are SHIP-TYPE-SPECIFIC (and size-dependent for gas/LNG) — NOT a single fleet-wide
-# vector. (cap_min[DWT], (d1, d2, d3, d4)) sorted high→low.
 _DD_VECTORS: dict[str, list[tuple[float, tuple[float, float, float, float]]]] = {
     "bulk_carrier":        [(0.0, (0.86, 0.94, 1.06, 1.18))],
     "gas_carrier":         [(65000.0, (0.81, 0.91, 1.12, 1.44)),
@@ -62,9 +46,8 @@ _DD_VECTORS: dict[str, list[tuple[float, tuple[float, float, float, float]]]] = 
     "ro_pax":              [(0.0, (0.76, 0.92, 1.14, 1.30))],
     "cruise_passenger":    [(0.0, (0.87, 0.95, 1.06, 1.16))],
 }
-_DEFAULT_DD = (0.86, 0.94, 1.06, 1.18)   # bulk-carrier vector; last-resort fallback
+_DEFAULT_DD = (0.86, 0.94, 1.06, 1.18)
 
-# Backward-compatible derived views (use the lowest/default segment).
 _REFERENCE_COEFFICIENTS: dict[str, tuple[float, float]] = {
     st: (segs[-1][1], segs[-1][2]) for st, segs in _REFERENCE_LINES.items()
 }
@@ -72,9 +55,6 @@ _GT_BASED_TYPES: set[str] = {
     st for st, segs in _REFERENCE_LINES.items() if segs[-1][3] == "gt"
 }
 
-# Bounds on the capacity used in the REFERENCE LINE only (attained CII always uses
-# the actual capacity). MEPC.353(78) caps bulk at 279,000 DWT and vehicle carriers
-# at 57,700 GT; the LNG <65,000 DWT segment uses 65,000 as its reference capacity.
 _REF_CAP_BOUNDS: dict[str, tuple[float, float]] = {
     "bulk_carrier":    (0.0, 279000.0),
     "lng_carrier":     (65000.0, float("inf")),
@@ -85,15 +65,6 @@ _REF_CAP_BOUNDS: dict[str, tuple[float, float]] = {
 def _select_reference_segment(
     ship_type: str, gross_tonnage: float, deadweight: float | None
 ) -> tuple[float, float, float, float]:
-    """Pick (a, c, attained_cap, ref_cap) for a vessel from the piecewise MEPC
-    reference line.
-
-    The capacity basis (GT vs DWT) is part of the segment, so capacity and the
-    coefficients are always consistent. ``attained_cap`` is the actual capacity
-    (used for the attained-CII denominator); ``ref_cap`` is the same value
-    clamped to the type's reference-line bounds. Falls back to GT when DWT is
-    missing.
-    """
     segments = _REFERENCE_LINES.get(ship_type)
     if segments is None:
         raise ValueError(
@@ -101,8 +72,6 @@ def _select_reference_segment(
             f"Supported: {sorted(_REFERENCE_LINES)}"
         )
     dwt = deadweight if (deadweight is not None and deadweight > 0) else 0.0
-    # Size thresholds are expressed in the type's own capacity basis (GT for the
-    # ro-ro/vehicle family, DWT otherwise), so compare against the matching measure.
     basis_type = segments[0][3]
     measure = gross_tonnage if basis_type == "gt" else dwt
     for cap_min, a, c, basis in segments:
@@ -117,7 +86,6 @@ def _select_reference_segment(
 
 
 class CIIEngine:
-    """IMO CII rating engine with configurable regulation version."""
 
     def __init__(
         self,
@@ -130,9 +98,6 @@ class CIIEngine:
         )
         self._params: dict[str, Any] = mgr.get_cii_params(version)
 
-    # ------------------------------------------------------------------
-    # Public
-    # ------------------------------------------------------------------
 
     def evaluate(
         self,
@@ -146,10 +111,7 @@ class CIIEngine:
         a, c, cap_auto, ref_cap = _select_reference_segment(
             ship_key, vessel.gross_tonnage, vessel.deadweight
         )
-        # An explicit capacity (e.g. from the optimizer) overrides the attained
-        # denominator; the (a, c) coefficients still come from the DWT segment.
         cap = capacity if capacity is not None else cap_auto
-        # Reference line uses the bounded capacity; attained uses actual cap.
         ref_basis = capacity if capacity is not None else ref_cap
 
         ref = a * (ref_basis ** (-c))
@@ -175,11 +137,6 @@ class CIIEngine:
         )
 
     def evaluate_fleet(self, fleet_data: list[dict]) -> list[CIIResult]:
-        """Evaluate CII for multiple vessels.
-
-        Each dict must contain keys: vessel, annual_co2_tonnes, distance_nm,
-        year, and optionally capacity.
-        """
         results: list[CIIResult] = []
         for entry in fleet_data:
             results.append(
@@ -193,17 +150,9 @@ class CIIEngine:
             )
         return results
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     @staticmethod
     def capacity_for(vessel: Vessel) -> float:
-        """Public: MEPC capacity (GT or DWT) the CII basis uses for this vessel.
-
-        Other modules (e.g. the speed optimizer) must use this so attained-CII
-        denominators agree with the engine's rating.
-        """
         _, _, cap, _ = _select_reference_segment(
             vessel.ship_type.value, vessel.gross_tonnage, vessel.deadweight
         )
@@ -222,7 +171,6 @@ class CIIEngine:
         factors: dict[str, float] = self._params.get("reduction_factors", {})
         if year in factors:
             return float(factors[year])
-        # For years beyond the table, use the maximum available factor
         int_keys = sorted(int(k) for k in factors)
         if not int_keys:
             return 0.0
@@ -243,8 +191,6 @@ class CIIEngine:
         return (co2_tonnes * 1e6) / (capacity * distance_nm)
 
     def _dd_vectors(self, ship_type: str, dwt: float | None = None) -> list[float] | None:
-        """Ship-type-specific (and size-dependent for gas/LNG) dd-vectors from
-        MEPC.354(78) Table 1. Size thresholds are in DWT."""
         segs = _DD_VECTORS.get(ship_type)
         if not segs:
             return None
@@ -255,9 +201,6 @@ class CIIEngine:
         return list(segs[-1][1])
 
     def cd_boundary_ratio(self, ship_type: str, dwt: float | None = None) -> float:
-        """Attained/required ratio at the C/D boundary (d3) — the point where CII
-        regulatory pressure begins (D triggers a corrective-action plan). Used by
-        the optimizer to anchor the continuous CII consequence."""
         dd = self._dd_vectors(ship_type, dwt)
         if dd is None or len(dd) < 4:
             dd = list(_DEFAULT_DD)
@@ -288,12 +231,6 @@ class CIIEngine:
     def _distance_to_boundary(
         attained: float, required: float, dd_vectors: list[float]
     ) -> float:
-        """Signed distance from attained CII to the nearest rating boundary.
-
-        Negative means attained is below (better than) the boundary; positive
-        means above (worse).  Returns distance to the closest boundary in the
-        CII value space.
-        """
         if required <= 0 or not dd_vectors:
             return 0.0
         boundaries = [d * required for d in dd_vectors]

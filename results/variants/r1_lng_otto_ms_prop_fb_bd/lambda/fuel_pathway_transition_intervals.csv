@@ -1,0 +1,16 @@
+scenario_id,year,blend_steps,lambda_low,lambda_high,from_pathway,to_pathway,interval,status
+CENTRAL_EXTENDED,2035,11,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+CENTRAL_EXTENDED,2035,21,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+CENTRAL_EXTENDED,2035,51,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+CENTRAL_EXTENDED,2045,11,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+CENTRAL_EXTENDED,2045,21,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+CENTRAL_EXTENDED,2045,51,0.845,0.85,LNG_only,LNG+biodiesel_fame,"(0.8450, 0.8500]",bracketed
+COMPATIBILITY_CONSTRAINED_2035,2035,11,0.805,0.81,VLSFO_only,VLSFO+biodiesel_fame,"(0.8050, 0.8100]",bracketed
+COMPATIBILITY_CONSTRAINED_2035,2035,21,0.4,1.0,VLSFO_only,VLSFO+biodiesel_fame,"(0.4000, 1.0000]",bracketed
+COMPATIBILITY_CONSTRAINED_2035,2035,51,0.4,1.0,VLSFO_only,VLSFO+biodiesel_fame,"(0.4000, 1.0000]",bracketed
+COMPATIBILITY_ENGINE,2035,11,0.805,0.81,VLSFO_only,VLSFO+biodiesel_fame,"(0.8050, 0.8100]",bracketed
+COMPATIBILITY_ENGINE,2035,21,0.4,1.0,VLSFO_only,VLSFO+biodiesel_fame,"(0.4000, 1.0000]",bracketed
+COMPATIBILITY_ENGINE,2035,51,0.4,1.0,VLSFO_only,VLSFO+biodiesel_fame,"(0.4000, 1.0000]",bracketed
+COMPATIBILITY_ENGINE,2045,11,0.805,0.81,VLSFO_only,VLSFO+biodiesel_fame,"(0.8050, 0.8100]",bracketed
+COMPATIBILITY_ENGINE,2045,21,0.805,0.81,VLSFO_only,VLSFO+biodiesel_fame,"(0.8050, 0.8100]",bracketed
+COMPATIBILITY_ENGINE,2045,51,0.805,0.81,VLSFO_only,VLSFO+biodiesel_fame,"(0.8050, 0.8100]",bracketed

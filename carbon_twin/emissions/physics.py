@@ -1,5 +1,3 @@
-"""Physics-based ship energy and fuel consumption models."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -12,7 +10,6 @@ from carbon_twin.data.schemas import (
     Voyage,
 )
 
-# ---- Typical design speeds (knots) by ship type, used as fallback ----
 _DESIGN_SPEEDS: dict[ShipType, float] = {
     ShipType.BULK_CARRIER: 14.0,
     ShipType.TANKER: 14.5,
@@ -29,7 +26,6 @@ _DESIGN_SPEEDS: dict[ShipType, float] = {
     ShipType.OTHER: 14.0,
 }
 
-# ---- Aux engine load fraction of installed ME power, by activity ----
 _AUX_FRACTION: dict[ShipType, dict[VesselActivity, float]] = {
     ShipType.CONTAINER_SHIP: {
         VesselActivity.UNDERWAY: 0.06,
@@ -75,28 +71,18 @@ def admiralty_power(
     speed_knots: float,
     admiralty_coeff: float,
 ) -> float:
-    """Estimate shaft power (kW) via the Admiralty coefficient formula.
-
-    P = (displacement^(2/3) * speed^3) / C
-    """
     if displacement_tonnes <= 0 or speed_knots <= 0 or admiralty_coeff <= 0:
         return 0.0
     return (displacement_tonnes ** (2 / 3) * speed_knots**3) / admiralty_coeff
 
 
 def estimate_admiralty_coeff(vessel: Vessel) -> float:
-    """Heuristic Admiralty coefficient derived from ship type, DWT, and design speed.
-
-    Reverse-engineers C from known ME power: C = disp^(2/3) * Vd^3 / P_me.
-    Falls back to ship-type lookup tables when ME power is unavailable.
-    """
     displacement = _estimate_displacement(vessel)
     design_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
 
     if vessel.main_engine_power_kw and vessel.main_engine_power_kw > 0:
         return (displacement ** (2 / 3) * design_speed**3) / vessel.main_engine_power_kw
 
-    # Fallback admiralty coefficients by ship type (typical values)
     _FALLBACK_C: dict[ShipType, float] = {
         ShipType.BULK_CARRIER: 550.0,
         ShipType.TANKER: 530.0,
@@ -119,11 +105,6 @@ def speed_power_curve(
     vessel: Vessel,
     speeds_knots: np.ndarray,
 ) -> np.ndarray:
-    """Power (kW) at each speed, using cubic law with corrections for hull form.
-
-    Applies a shallow-water / fouling margin of 15 % above the Admiralty baseline
-    for vessels older than 10 years.
-    """
     displacement = _estimate_displacement(vessel)
     ac = estimate_admiralty_coeff(vessel)
 
@@ -144,7 +125,6 @@ def speed_power_curve(
 
 
 def main_engine_fuel_rate(power_kw: float, sfoc_g_per_kwh: float = 180.0) -> float:
-    """Main engine fuel consumption in tonnes/hour."""
     if power_kw <= 0:
         return 0.0
     return power_kw * sfoc_g_per_kwh / 1e6
@@ -155,11 +135,6 @@ def aux_engine_fuel_rate(
     activity: VesselActivity,
     sfoc_g_per_kwh: float = 220.0,
 ) -> float:
-    """Auxiliary engine fuel consumption in tonnes/hour.
-
-    Estimates aux power as a fraction of installed main engine power, varying
-    by ship type and activity mode.
-    """
     me_power = vessel.main_engine_power_kw or _estimate_me_power(vessel)
 
     type_fractions = _AUX_FRACTION.get(vessel.ship_type, _DEFAULT_AUX_FRACTION)
@@ -175,11 +150,6 @@ def voyage_fuel_consumption(
     speed_profile: np.ndarray | None = None,
     weather_factor: float = 1.0,
 ) -> dict[str, float]:
-    """Estimate fuel consumption for a single voyage.
-
-    Returns dict with keys: main_engine_tonnes, aux_engine_tonnes,
-    total_tonnes, energy_mj.
-    """
     displacement = _estimate_displacement(vessel)
     ac = estimate_admiralty_coeff(vessel)
 
@@ -226,7 +196,7 @@ def voyage_fuel_consumption(
     aux_tonnes = aux_engine_fuel_rate(vessel, VesselActivity.UNDERWAY) * sea_hours
     total = me_tonnes + aux_tonnes
 
-    lcv_mj_per_kg = 40.2  # HFO default
+    lcv_mj_per_kg = 40.2
     energy_mj = total * 1e3 * lcv_mj_per_kg
 
     return {
@@ -242,7 +212,6 @@ def port_fuel_consumption(
     port_call: PortCall,
     shore_power: bool = False,
 ) -> dict[str, float]:
-    """Estimate fuel consumption during a port call."""
     if shore_power or port_call.shore_power_used:
         return {
             "main_engine_tonnes": 0.0,
@@ -259,7 +228,7 @@ def port_fuel_consumption(
     berth_tonnes = berthed_rate * port_call.berth_hours
     total = anch_tonnes + berth_tonnes
 
-    lcv_mj_per_kg = 42.7  # MGO default for port
+    lcv_mj_per_kg = 42.7
     energy_mj = total * 1e3 * lcv_mj_per_kg
 
     return {
@@ -276,7 +245,6 @@ def annual_fuel_consumption(
     port_calls: list[PortCall],
     weather_factors: list[float] | None = None,
 ) -> dict[str, float]:
-    """Aggregate fuel consumption over a year of voyages and port calls."""
     total_me = 0.0
     total_aux = 0.0
     total_energy = 0.0
@@ -304,12 +272,7 @@ def annual_fuel_consumption(
     }
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 def _estimate_displacement(vessel: Vessel) -> float:
-    """Estimate displacement from DWT and GT (lightweight ~ 0.3*GT for cargo)."""
     dwt = vessel.deadweight
     if dwt and dwt > 0:
         lightweight_ratio: dict[ShipType, float] = {
@@ -333,8 +296,7 @@ def _estimate_displacement(vessel: Vessel) -> float:
 
 
 def _estimate_me_power(vessel: Vessel) -> float:
-    """Rough ME power estimate when not available on the vessel record."""
     displacement = _estimate_displacement(vessel)
     design_speed = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
-    ac = 500.0  # generic
+    ac = 500.0
     return (displacement ** (2 / 3) * design_speed**3) / ac

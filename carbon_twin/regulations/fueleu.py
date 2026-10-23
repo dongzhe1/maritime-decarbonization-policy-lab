@@ -1,5 +1,3 @@
-"""FuelEU Maritime (Regulation EU 2023/1805) compliance engine."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -12,20 +10,16 @@ from carbon_twin.data.schemas import (
 )
 from carbon_twin.regulations.versioning import RegulationVersionManager
 
-# Fuel types classified as RFNBO (Renewable Fuels of Non-Biological Origin)
 _RFNBO_FUEL_TYPES: set[FuelType] = {
     FuelType.METHANOL_E,
     FuelType.AMMONIA_GREEN,
     FuelType.HYDROGEN_GREEN,
 }
 
-# Energy content of one tonne of VLSFO-equivalent (MJ), used in the FuelEU
-# penalty formula (Regulation (EU) 2023/1805, Annex IV).
 _VLSFO_ENERGY_MJ_PER_TONNE: float = 41000.0
 
 
 class FuelEUEngine:
-    """FuelEU Maritime GHG intensity compliance engine."""
 
     def __init__(
         self,
@@ -38,9 +32,6 @@ class FuelEUEngine:
         )
         self._params: dict[str, Any] = mgr.get_fueleu_params(version)
 
-    # ------------------------------------------------------------------
-    # Default WtW emission factors (gCO2e/MJ) used when caller provides none
-    # ------------------------------------------------------------------
 
     _DEFAULT_FACTORS: dict[str, float] = {
         "HFO": 91.16,
@@ -58,9 +49,6 @@ class FuelEUEngine:
         "shore_power": 0.0,
     }
 
-    # ------------------------------------------------------------------
-    # Public
-    # ------------------------------------------------------------------
 
     def evaluate(
         self,
@@ -73,7 +61,7 @@ class FuelEUEngine:
     ) -> FuelEUResult:
         factors = emission_factors if emission_factors is not None else self._DEFAULT_FACTORS
 
-        rfnbo_bonus = self._apply_rfnbo_multiplier(fuel_records, factors)
+        rfnbo_bonus = self._apply_rfnbo_multiplier(fuel_records, factors, year)
         actual = self._compute_ghg_intensity(fuel_records, energy_mj, factors, rfnbo_bonus)
         target = self._target_intensity(year)
         balance = self._compliance_balance(actual, target, energy_mj)
@@ -93,9 +81,6 @@ class FuelEUEngine:
             pooling_group=pooling_group,
         )
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _compute_ghg_intensity(
         self,
@@ -104,11 +89,6 @@ class FuelEUEngine:
         factors: dict[str, float],
         rfnbo_bonus_energy: float = 0.0,
     ) -> float:
-        """Weighted average GHG intensity in gCO2e/MJ.
-
-        RFNBO bonus energy is added to the denominator (energy counted 2x) but
-        emissions stay the same, effectively lowering the intensity.
-        """
         total_co2e_g = 0.0
 
         for rec in fuel_records:
@@ -125,7 +105,6 @@ class FuelEUEngine:
         ref = float(self._params.get("reference_value_gCO2e_per_MJ", 91.16))
         targets: dict[str, float] = self._params.get("reduction_targets", {})
 
-        # Find the applicable reduction target for the given year
         int_targets = {int(k): float(v) for k, v in targets.items()}
         applicable_years = sorted(y for y in int_targets if y <= year)
         if not applicable_years:
@@ -135,22 +114,11 @@ class FuelEUEngine:
 
     @staticmethod
     def _compliance_balance(actual: float, target: float, energy_mj: float) -> float:
-        """Positive = surplus, negative = deficit."""
         return (target - actual) * energy_mj
 
     def _compute_penalty(
         self, deficit_balance: float, actual_intensity: float, year: int
     ) -> float:
-        """Penalty for non-compliance per Regulation (EU) 2023/1805, Annex IV.
-
-        ``deficit_balance`` is the compliance balance in gCO2e (negative when in
-        deficit).  The regulation defines the penalty as::
-
-            penalty_EUR = |compliance_balance| / (GHGIE_actual * 41000) * 2400
-
-        where 41000 MJ is the energy content of one tonne of VLSFO-equivalent
-        and 2400 EUR is the price per tonne of VLSFO-equivalent energy deficit.
-        """
         if deficit_balance >= 0:
             return 0.0
         if actual_intensity <= 0:
@@ -165,14 +133,16 @@ class FuelEUEngine:
         self,
         fuel_records: list[FuelRecord],
         factors: dict[str, float],
+        year: int | None = None,
     ) -> float:
-        """Return extra energy (MJ) from RFNBO fuels counted at 2x toward compliance."""
+        until = self._params.get("rfnbo_multiplier_until_year")
+        if until is not None and year is not None and year > int(until):
+            return 0.0
         multiplier = float(self._params.get("rfnbo_multiplier", 2.0))
         extra_energy = 0.0
         for rec in fuel_records:
             if rec.fuel_type in _RFNBO_FUEL_TYPES:
                 energy = rec.energy_mj if rec.energy_mj and rec.energy_mj > 0 else 0.0
-                # Extra credit = (multiplier - 1) * energy
                 extra_energy += (multiplier - 1.0) * energy
         return extra_energy
 
@@ -181,10 +151,6 @@ class FuelEUEngine:
         current_balance: float,
         banked_balance: float,
     ) -> tuple[float, float]:
-        """Apply banked surplus from previous year to current balance.
-
-        Returns (adjusted_balance, remaining_bank).
-        """
         if current_balance >= 0:
             return current_balance, banked_balance
         needed = abs(current_balance)
@@ -197,10 +163,6 @@ class FuelEUEngine:
         year: int,
         max_borrow_pct: float = 0.02,
     ) -> tuple[float, float]:
-        """Borrow against next year's compliance to reduce current deficit.
-
-        Returns (adjusted_deficit, borrowing_obligation).
-        """
         if current_deficit >= 0:
             return current_deficit, 0.0
         borrow_limit = abs(current_deficit) * max_borrow_pct
@@ -209,11 +171,6 @@ class FuelEUEngine:
 
     @staticmethod
     def evaluate_pool(pool_results: list[FuelEUResult]) -> list[FuelEUResult]:
-        """Redistribute surplus/deficit within a pooling group.
-
-        Vessels with surplus offset those with deficit.  Residual deficit is
-        spread proportionally among deficit vessels.
-        """
         if not pool_results:
             return []
 
@@ -222,8 +179,6 @@ class FuelEUEngine:
 
         adjusted: list[FuelEUResult] = []
         for r in pool_results:
-            # Simplified: each vessel gets a share of the total pool balance
-            # proportional to the magnitude of its own balance.
             share = abs(r.compliance_balance) / total_energy
             pooled_balance = total_balance * share
             adjusted.append(

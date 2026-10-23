@@ -1,0 +1,8 @@
+scenario,ship_type_group,rho_multiplier,reason
+neutral,all,1.00,main case (EU-MRV-implied proxy taken at face value)
+proxy_low,bulk_carrier;tanker;general_cargo,0.90,EU-scope proxy lower bound for ships with limited extra-EU route-structure bias
+proxy_high,bulk_carrier;tanker;general_cargo,1.10,EU-scope proxy upper bound for the same ships
+proxy_low,container_ship;lng_carrier;gas_carrier;ro_pax;cruise_passenger,0.80,wider lower bound for ships whose EU-leg structure differs most from global activity
+proxy_high,container_ship;lng_carrier;gas_carrier;ro_pax;cruise_passenger,1.20,wider upper bound for the same ships
+stress_low,all,0.75,appendix stress test (optional)
+stress_high,all,1.25,appendix stress test (optional)

@@ -11,13 +11,6 @@ cii:
       2024: 0.07
       2025: 0.09
       2026: 0.11
-    # NOTE: CII reference lines (a, c, capacity basis) and the ship-type-specific,
-    # size-dependent rating dd-vectors are transcribed verbatim from MEPC.353(78)
-    # Table 1 and MEPC.354(78) Table 1 in carbon_twin/regulations/cii.py
-    # (_REFERENCE_LINES and _DD_VECTORS). They are regulatory constants, not a
-    # version knob, so they live in code with the rest of the formula rather than
-    # here. Earlier revisions wrongly used a single fleet-wide vector
-    # [0.86,0.94,1.06,1.18]; that is the bulk-carrier vector only.
 
 fueleu:
   EU_2023_1805:
@@ -36,6 +29,32 @@ fueleu:
       2050: 0.80
     penalty_per_gCO2e_per_MJ_deficit: 2400
     rfnbo_multiplier: 2.0
+    banking_allowed: true
+    borrowing_allowed: true
+    borrowing_limit_pct: 0.02
+    pooling_allowed: true
+    ops_obligation:
+      start_year: 2030
+      ship_types: ["container_ship", "cruise_passenger"]
+      extended_year: 2035
+
+  EU_2023_1805_r1:
+    description: "FuelEU Maritime Regulation (EU) 2023/1805, revision-round-1 reading: RFNBO reward factor ends after 2033"
+    source: "Regulation (EU) 2023/1805, Art. 5 and Annex I"
+    applicable_gt_threshold: 5000
+    gases: ["CO2", "CH4", "N2O"]
+    scope: "well_to_wake"
+    reference_value_gCO2e_per_MJ: 91.16
+    reduction_targets:
+      2025: 0.02
+      2030: 0.06
+      2035: 0.145
+      2040: 0.31
+      2045: 0.62
+      2050: 0.80
+    penalty_per_gCO2e_per_MJ_deficit: 2400
+    rfnbo_multiplier: 2.0
+    rfnbo_multiplier_until_year: 2033
     banking_allowed: true
     borrowing_allowed: true
     borrowing_limit_pct: 0.02

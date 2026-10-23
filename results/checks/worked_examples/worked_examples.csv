@@ -1,0 +1,21 @@
+example,quantity,unit,hand,model,abs_diff,tolerance,status,note
+E1,2035 target intensity,gCO2e/MJ,77.9418,77.9418,0.0,0.001,PASS,91.16 x (1 - 0.145)
+E1,compliance balance,tCO2e,-13608.199999999997,-13608.2,3.637978807091713e-12,0.001,PASS,
+E1,FuelEU penalty,EUR,8701011.042879406,8701011.04,0.0028794072568416595,0.5,PASS,"|CB| / (91.55 x 41,000) x 2,400"
+E2,"covered tCO2e, 1,000 t VLSFO intra-EEA",tCO2e,3158.08,3158.08,0.0,1e-06,PASS,
+E2,"ETS cost, 1,000 t VLSFO extra-EEA",EUR,126323.2,126323.2,0.0,0.001,PASS,
+E3,LNG ETS TtW CO2e (AR5 GWP),gCO2e/MJ,72.52538391038696,72.52538391038696,0.0,1e-09,PASS,
+E3,"LNG FuelEU WtW (AR4 GWP, WtT 18.5)",gCO2e/MJ,89.20292912423625,89.20292912423625,0.0,1e-09,PASS,
+E3,LNG FuelEU WtW used by the engine,gCO2e/MJ,89.20292912423625,89.20292912423625,0.0,1e-09,PASS,
+E4,ETS-covered FAME energy,GJ,10.0,10.0,0.0,1e-12,PASS,half of each fuel (EMSA ETS FAQ)
+E4,ETS-covered VLSFO energy,GJ,40.0,40.0,0.0,1e-12,PASS,
+E4,FuelEU in-scope FAME energy,GJ,20.0,20.0,0.0,1e-12,PASS,lowest intensity first (FuelEU guidance 4.4)
+E4,FuelEU in-scope VLSFO energy,GJ,30.0,30.0,0.0,1e-12,PASS,
+E4,"in-scope intensity, priority allocation",gCO2e/MJ,66.93,66.93,0.0,0.001,PASS,
+E4,"in-scope intensity, proportional allocation",gCO2e/MJ,79.24,79.24,0.0,0.001,PASS,
+E5,e-methanol intensity 2030,gCO2e/MJ,2.5,2.5,0.0,1e-09,PASS,reward factor applies through 2033
+E5,e-methanol intensity 2045,gCO2e/MJ,5.0,5.0,0.0,1e-09,PASS,reward factor applies through 2033
+E6,"compliance share, proportional",share,0.22109179528838338,0.221091795288,3.833877659786822e-13,1e-09,PASS,
+E6,"compliance share, priority (s = 0.6)",share,0.13265507717303002,0.132655077173,3.0003777240494856e-14,1e-09,PASS,
+E6,in-scope intensity at the priority compliance share,gCO2e/MJ,77.9418,77.9418,0.0,1e-09,PASS,
+E7,"annual cost from a 2,000 nm leg (28,000 nm/yr)",EUR,140000.0,140000.0,0.0,1e-09,PASS,annual_scale = annual distance / leg distance

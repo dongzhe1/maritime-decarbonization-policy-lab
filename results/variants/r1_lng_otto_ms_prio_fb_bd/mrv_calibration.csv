@@ -1,0 +1,11 @@
+case,year,decision_dimension,fuel_price_scenario,eua_price_eur_per_tco2,n_vessels,mean_rci_silo,median_rci_silo,p90_rci_silo,fleet_delta_cost_eur,mean_delta_cost_eur
+C0_uncalibrated_proxy,2026,fuel_and_speed,base_2026,80.0,12333,0.0,0.0,0.0,0.0,0.0
+C1_MRV_calibrated_baseline,2026,fuel_and_speed,base_2026,80.0,12333,0.0,0.0,0.0,0.0,0.0
+C0_uncalibrated_proxy,2030,fuel_and_speed,base_2026,80.0,12333,0.03697,0.0348,0.0509,1069974392.56,86757.03
+C1_MRV_calibrated_baseline,2030,fuel_and_speed,base_2026,80.0,12333,0.03626,0.034,0.0497,1201773345.25,97443.72
+C0_uncalibrated_proxy,2035,fuel_and_speed,base_2026,80.0,12333,0.10311,0.0981,0.1368,3458319505.95,280411.86
+C1_MRV_calibrated_baseline,2035,fuel_and_speed,base_2026,80.0,12333,0.10157,0.0964,0.1346,3883491020.85,314886.16
+C0_uncalibrated_proxy,2040,fuel_and_speed,base_2026,80.0,12333,0.19373,0.1863,0.2444,8187011778.74,663829.71
+C1_MRV_calibrated_baseline,2040,fuel_and_speed,base_2026,80.0,12333,0.19174,0.1839,0.2421,9195511819.14,745602.19
+C0_uncalibrated_proxy,2045,fuel_and_speed,base_2026,80.0,12333,0.29702,0.2892,0.3539,17317304467.8,1404143.72
+C1_MRV_calibrated_baseline,2045,fuel_and_speed,base_2026,80.0,12333,0.29536,0.2866,0.35278,19459048867.72,1577803.36

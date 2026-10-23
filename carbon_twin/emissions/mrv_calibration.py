@@ -1,5 +1,3 @@
-"""Weak-supervision calibration of voyage-level proxy emissions using annual MRV data."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -13,15 +11,6 @@ CalibrationMethod = Literal["simple_ratio", "ship_type_ratio", "hierarchical", "
 
 
 class MRVCalibrator:
-    """Calibrate proxy voyage emissions to match annual MRV totals.
-
-    Supports four methods:
-      - simple_ratio: per-vessel ratio = MRV_total / sum(proxy)
-      - ship_type_ratio: per-ship-type average ratio
-      - hierarchical: vessel random effect + ship_type fixed effect via
-        regularized regression
-      - gradient_boosting: XGBoost on vessel features predicting ratio
-    """
 
     def __init__(self, method: CalibrationMethod = "hierarchical") -> None:
         self.method: CalibrationMethod = method
@@ -37,16 +26,6 @@ class MRVCalibrator:
         voyages_with_proxy: pd.DataFrame,
         mrv_annual: pd.DataFrame,
     ) -> MRVCalibrator:
-        """Learn calibration factors from proxy voyage emissions and MRV annual data.
-
-        Parameters
-        ----------
-        voyages_with_proxy : DataFrame
-            Columns: vessel_imo, year, voyage_id, proxy_emission_tonnes.
-            May also include: ship_type, dwt, year_built, distance_nm.
-        mrv_annual : DataFrame
-            Columns: imo_number, year, total_co2_tonnes.
-        """
         proxy_annual = (
             voyages_with_proxy
             .groupby(["vessel_imo", "year"], as_index=False)
@@ -82,7 +61,6 @@ class MRVCalibrator:
         return self
 
     def transform(self, voyages_with_proxy: pd.DataFrame) -> pd.DataFrame:
-        """Apply calibration to produce ``adjusted_emission_tonnes``."""
         df = voyages_with_proxy.copy()
 
         if self.method == "simple_ratio":
@@ -97,7 +75,6 @@ class MRVCalibrator:
         return df
 
     def get_calibration_factors(self) -> pd.DataFrame:
-        """Return vessel- or ship-type-level calibration factors."""
         if self.method == "simple_ratio" and self._vessel_ratios is not None:
             return self._vessel_ratios.copy()
         if self.method == "ship_type_ratio" and self._ship_type_ratios is not None:
@@ -115,7 +92,6 @@ class MRVCalibrator:
         voyages_with_proxy: pd.DataFrame,
         mrv_annual: pd.DataFrame,
     ) -> dict[str, float]:
-        """Evaluate calibration quality at annual vessel level."""
         adjusted = self.transform(voyages_with_proxy)
 
         pred_annual = (
@@ -142,9 +118,6 @@ class MRVCalibrator:
             "r2": float(r2_score(y_true, y_pred)),
         }
 
-    # ------------------------------------------------------------------
-    # simple_ratio
-    # ------------------------------------------------------------------
 
     def _fit_simple_ratio(self, merged: pd.DataFrame) -> None:
         self._vessel_ratios = (
@@ -163,9 +136,6 @@ class MRVCalibrator:
         df.drop(columns=["ratio"], inplace=True)
         return df
 
-    # ------------------------------------------------------------------
-    # ship_type_ratio
-    # ------------------------------------------------------------------
 
     def _fit_ship_type_ratio(
         self,
@@ -196,21 +166,12 @@ class MRVCalibrator:
         df.drop(columns=["_ratio"], inplace=True)
         return df
 
-    # ------------------------------------------------------------------
-    # hierarchical
-    # ------------------------------------------------------------------
 
     def _fit_hierarchical(
         self,
         merged: pd.DataFrame,
         voyages: pd.DataFrame,
     ) -> None:
-        """Vessel random effect + ship_type fixed effect via regularized regression.
-
-        min || alpha_i * proxy_sum_i - mrv_i ||^2
-            + lambda1 * || alpha_i - 1 ||^2
-            + lambda2 * ship_type_smoothness
-        """
         vessel_types = (
             voyages[["vessel_imo", "ship_type"]]
             .drop_duplicates("vessel_imo")
@@ -286,9 +247,6 @@ class MRVCalibrator:
         df.drop(columns=["combined_factor"], inplace=True)
         return df
 
-    # ------------------------------------------------------------------
-    # gradient_boosting
-    # ------------------------------------------------------------------
 
     def _fit_gradient_boosting(
         self,
@@ -363,7 +321,6 @@ class MRVCalibrator:
         if "ship_type_code" not in work.columns and "ship_type" in work.columns:
             work["ship_type_code"] = work["ship_type"].astype("category").cat.codes
 
-        # Aggregate proxy_sum and num_voyages at vessel-year level for features
         if "proxy_sum" not in work.columns:
             proxy_agg = (
                 work.groupby(["vessel_imo", "year"], as_index=False)
@@ -378,7 +335,7 @@ class MRVCalibrator:
             work[c] = 0
 
         X = work[self._gb_feature_cols].fillna(0).values
-        work["_ratio"] = self._gb_model.predict(X)  # type: ignore[union-attr]
+        work["_ratio"] = self._gb_model.predict(X)
         work["adjusted_emission_tonnes"] = work["proxy_emission_tonnes"] * work["_ratio"]
 
         result_cols = list(df.columns) + ["adjusted_emission_tonnes"]

@@ -1,5 +1,3 @@
-"""Audit trail generation for regulation calculations."""
-
 from __future__ import annotations
 
 import datetime as dt
@@ -16,7 +14,6 @@ from carbon_twin.data.schemas import UnifiedComplianceResult
 
 @dataclass
 class AuditEntry:
-    """Single audit record for a regulation calculation."""
 
     timestamp: str = field(default_factory=lambda: dt.datetime.utcnow().isoformat(timespec="seconds"))
     regulation: str = ""
@@ -28,7 +25,6 @@ class AuditEntry:
 
 
 class AuditLog:
-    """Append-only audit log for regulation computations."""
 
     def __init__(self) -> None:
         self._entries: list[AuditEntry] = []
@@ -61,7 +57,6 @@ class AuditLog:
         entry: AuditEntry,
         recompute_fn: Callable[[], dict[str, Any]],
     ) -> bool:
-        """Re-run the computation and compare the result hash to the recorded one."""
         recomputed = recompute_fn()
         recomputed_hash = hash_inputs(**recomputed)
         recorded_hash = hash_inputs(**entry.result_summary)
@@ -69,12 +64,6 @@ class AuditLog:
 
 
 def hash_inputs(**kwargs: Any) -> str:
-    """Deterministic SHA-256 hash of computation inputs.
-
-    All values are serialised to a canonical JSON string before hashing.
-    Floats are rounded to 10 decimal places to avoid platform-dependent
-    floating-point representation differences.
-    """
     canonical = json.dumps(
         kwargs,
         sort_keys=True,
@@ -88,7 +77,6 @@ def generate_compliance_report(
     unified_result: UnifiedComplianceResult,
     audit_log: AuditLog,
 ) -> dict:
-    """Structured JSON-serialisable compliance report with full traceability."""
     report: dict[str, Any] = {
         "vessel_imo": unified_result.vessel_imo,
         "year": unified_result.year,
@@ -112,7 +100,6 @@ def generate_compliance_report(
     if unified_result.imo_nzf is not None:
         report["regulations"]["imo_nzf"] = unified_result.imo_nzf.model_dump()
 
-    # Attach matching audit entries for this vessel/year
     for entry in audit_log.entries:
         if entry.vessel_imo == unified_result.vessel_imo:
             report["audit_trail"].append(asdict(entry))
@@ -122,13 +109,7 @@ def generate_compliance_report(
     return report
 
 
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
-
-
 def _json_serialiser(obj: Any) -> Any:
-    """Fallback serialiser for json.dumps."""
     if isinstance(obj, float):
         return round(obj, 10)
     if isinstance(obj, dt.datetime):

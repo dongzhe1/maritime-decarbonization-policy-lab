@@ -1,0 +1,21 @@
+{
+  "base_fuels": [
+    "VLSFO"
+  ],
+  "clean_objective": false,
+  "description": "Original specification: legacy LNG factors, full scope, RFNBO x2 in all years, per-leg magnitudes",
+  "exact_blend": false,
+  "fueleu_factors_from_config": false,
+  "fueleu_gwp": {
+    "CH4": 25.0,
+    "N2O": 298.0
+  },
+  "fueleu_version": null,
+  "lng_cslip_pct": null,
+  "lng_factors_derived": null,
+  "lng_wtt_g_per_mj": 18.5,
+  "name": "v23",
+  "report_annual": false,
+  "scope_mode": "full",
+  "wtw_overrides": {}
+}

@@ -1,5 +1,3 @@
-"""ML surrogate for fast emission prediction in optimization loops."""
-
 from __future__ import annotations
 
 import pickle
@@ -15,15 +13,6 @@ from carbon_twin.data.schemas import ShipType, Vessel, Voyage
 
 
 class EmissionSurrogate:
-    """Fast surrogate model mapping vessel/voyage features to emissions.
-
-    Supports three back-ends:
-      - ``xgboost``: gradient-boosted trees (default, most accurate)
-      - ``linear``: regularized linear regression (fastest, interpretable)
-      - ``mlp``: multi-layer perceptron (sklearn ``MLPRegressor``)
-
-    Each back-end trains three targets: fuel_tonnes, co2e_ttw, co2e_wtw.
-    """
 
     _MODEL_TYPES = {"xgboost", "linear", "mlp"}
 
@@ -36,9 +25,6 @@ class EmissionSurrogate:
         self._feature_names: list[str] = []
         self._fitted: bool = False
 
-    # ------------------------------------------------------------------
-    # Feature engineering
-    # ------------------------------------------------------------------
 
     @staticmethod
     def prepare_features(
@@ -46,11 +32,6 @@ class EmissionSurrogate:
         voyages: list[Voyage],
         weather_factors: list[float] | None = None,
     ) -> pd.DataFrame:
-        """Build feature matrix from vessel/voyage pairs.
-
-        Returns one row per voyage with columns usable for model training
-        or prediction.
-        """
         vessel_map = {v.imo_number: v for v in vessels}
         rows: list[dict[str, Any]] = []
 
@@ -99,9 +80,6 @@ class EmissionSurrogate:
 
         return pd.DataFrame(rows)
 
-    # ------------------------------------------------------------------
-    # Training
-    # ------------------------------------------------------------------
 
     _FEATURE_COLS: list[str] = [
         "ship_type_code",
@@ -129,7 +107,6 @@ class EmissionSurrogate:
         y_co2e_ttw: np.ndarray,
         y_co2e_wtw: np.ndarray,
     ) -> EmissionSurrogate:
-        """Train surrogate models for three emission targets."""
         feature_cols = [c for c in self._FEATURE_COLS if c in X.columns]
         self._feature_names = feature_cols
         X_arr = X[feature_cols].fillna(0).values.astype(np.float64)
@@ -155,7 +132,6 @@ class EmissionSurrogate:
         return self
 
     def predict(self, X: pd.DataFrame) -> dict[str, np.ndarray]:
-        """Predict fuel_tonnes, co2e_ttw, co2e_wtw."""
         self._check_fitted()
         X_arr = self._prepare_X(X)
         results: dict[str, np.ndarray] = {}
@@ -173,10 +149,6 @@ class EmissionSurrogate:
         X: pd.DataFrame,
         n_bootstrap: int = 100,
     ) -> dict[str, dict[str, np.ndarray]]:
-        """Bootstrap prediction intervals.
-
-        Returns for each target: 'mean', 'lower', 'upper' arrays.
-        """
         self._check_fitted()
         X_arr = self._prepare_X(X)
         n_samples = X_arr.shape[0]
@@ -195,8 +167,6 @@ class EmissionSurrogate:
                 else:
                     preds_matrix[b] = model.predict(X_boot[:n_samples])
 
-            # For proper bootstrap uncertainty, retrain on bootstrap samples
-            # Here we use prediction perturbation as a lightweight proxy
             base_pred = (
                 model.predict(self._scaler.transform(X_arr))
                 if self.model_type == "linear"
@@ -214,7 +184,6 @@ class EmissionSurrogate:
         return results
 
     def save(self, path: str | Path) -> None:
-        """Persist surrogate to disk."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         state = {
@@ -229,9 +198,8 @@ class EmissionSurrogate:
 
     @classmethod
     def load(cls, path: str | Path) -> EmissionSurrogate:
-        """Load a persisted surrogate."""
         with open(path, "rb") as f:
-            state = pickle.load(f)  # noqa: S301
+            state = pickle.load(f)
         obj = cls(model_type=state["model_type"])
         obj._models = state["models"]
         obj._scaler = state["scaler"]
@@ -240,11 +208,6 @@ class EmissionSurrogate:
         return obj
 
     def feature_importance(self) -> pd.DataFrame:
-        """Feature importance averaged across targets.
-
-        XGBoost uses built-in ``feature_importances_``; linear uses absolute
-        coefficients; MLP uses connection weights.
-        """
         self._check_fitted()
         records: list[dict[str, Any]] = []
 
@@ -271,9 +234,6 @@ class EmissionSurrogate:
         )
         return avg
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _make_model(self) -> Any:
         if self.model_type == "xgboost":

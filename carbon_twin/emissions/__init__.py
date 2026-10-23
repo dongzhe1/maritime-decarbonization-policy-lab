@@ -1,5 +1,3 @@
-"""Emissions layer: physics models, emission factors, MRV calibration, surrogates."""
-
 from carbon_twin.emissions.factors import (
     FuelEmissionFactors,
     get_co2e_ttw,
@@ -34,13 +32,11 @@ from carbon_twin.emissions.uncertainty import (
 )
 
 __all__ = [
-    # factors
     "FuelEmissionFactors",
     "load_emission_factors",
     "get_co2e_ttw",
     "get_co2e_wtw",
     "get_ghg_intensity_wtw",
-    # physics
     "admiralty_power",
     "estimate_admiralty_coeff",
     "speed_power_curve",
@@ -49,17 +45,13 @@ __all__ = [
     "voyage_fuel_consumption",
     "port_fuel_consumption",
     "annual_fuel_consumption",
-    # metocean
     "compute_weather_factor",
     "beaufort_to_wind_speed",
     "added_resistance_wind",
     "added_resistance_waves",
     "voyage_weather_penalty",
-    # mrv_calibration
     "MRVCalibrator",
-    # surrogate
     "EmissionSurrogate",
-    # uncertainty
     "conformal_prediction_interval",
     "bootstrap_uncertainty",
     "propagate_emission_uncertainty",

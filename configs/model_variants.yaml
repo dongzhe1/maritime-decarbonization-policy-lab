@@ -1,0 +1,214 @@
+
+defaults: &r1_defaults
+  lng_cslip_pct: null
+  lng_wtt_g_per_mj: 18.5
+  fueleu_gwp: {CH4: 25.0, N2O: 298.0}
+  scope_mode: mrv
+  fueleu_version: EU_2023_1805_r1
+  fueleu_factors_from_config: true
+  report_annual: true
+  base_fuels: [VLSFO]
+  wtw_overrides: {VLSFO: 91.55, MGO: 90.77}
+
+variants:
+  v23:
+    description: "Original specification: legacy LNG factors, full scope, RFNBO x2 in all years, per-leg magnitudes"
+    lng_cslip_pct: null
+    scope_mode: full
+    fueleu_version: null
+    fueleu_factors_from_config: false
+    report_annual: false
+    base_fuels: [VLSFO]
+
+  r1_lng_v23:
+    <<: *r1_defaults
+    description: "Bookkeeping corrections (MRV scope, RFNBO reward ends 2033, FuelEU reads config factors, annual magnitudes); LNG factors NOT corrected"
+
+  r1_lng_otto_ms:
+    <<: *r1_defaults
+    description: "Bookkeeping corrections + Annex II LNG Otto dual-fuel medium-speed slip (3.1%) applied to ETS and FuelEU"
+    lng_cslip_pct: 3.1
+
+  r1_lng_otto_ss:
+    <<: *r1_defaults
+    description: "Bookkeeping corrections + Annex II LNG Otto dual-fuel slow-speed slip (1.7%)"
+    lng_cslip_pct: 1.7
+
+  r1_lng_diesel_ss:
+    <<: *r1_defaults
+    description: "Bookkeeping corrections + Annex II LNG Diesel dual-fuel slow-speed slip (0.2%)"
+    lng_cslip_pct: 0.2
+
+  r1_lng_lbsi:
+    <<: *r1_defaults
+    description: "Bookkeeping corrections + Annex II LNG lean-burn spark-ignition slip (2.6%)"
+    lng_cslip_pct: 2.6
+
+  r1_lng_v23_routed:
+    <<: *r1_defaults
+    description: "As r1_lng_v23, but low-carbon fuel is burned on in-scope energy only (scope allocation upper bound)"
+    scope_mode: mrv_routed
+
+  r1_lng_otto_ms_routed:
+    <<: *r1_defaults
+    description: "As r1_lng_otto_ms, but low-carbon fuel is burned on in-scope energy only (scope allocation upper bound)"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_routed
+
+  r1_lng_otto_ss_routed:
+    <<: *r1_defaults
+    description: "As r1_lng_otto_ss, routed scope allocation"
+    lng_cslip_pct: 1.7
+    scope_mode: mrv_routed
+
+  r1_lng_diesel_ss_routed:
+    <<: *r1_defaults
+    description: "As r1_lng_diesel_ss, routed scope allocation"
+    lng_cslip_pct: 0.2
+    scope_mode: mrv_routed
+
+  r1_lng_lbsi_routed:
+    <<: *r1_defaults
+    description: "As r1_lng_lbsi, routed scope allocation"
+    lng_cslip_pct: 2.6
+    scope_mode: mrv_routed
+
+  r1_lng_otto_ms_freebase:
+    <<: *r1_defaults
+    description: "As r1_lng_otto_ms, but the blend optimiser may also start from an LNG base (LNG + one low-carbon component)"
+    lng_cslip_pct: 3.1
+    base_fuels: [VLSFO, LNG]
+
+  v23_lng_otto_ms:
+    description: "Isolates the LNG correction: v23 bookkeeping with Annex II Otto medium-speed LNG factors"
+    lng_cslip_pct: 3.1
+    lng_wtt_g_per_mj: 18.5
+    fueleu_gwp: {CH4: 25.0, N2O: 298.0}
+    scope_mode: full
+    fueleu_version: null
+    fueleu_factors_from_config: true
+    report_annual: false
+    base_fuels: [VLSFO]
+
+  r1_lng_v23_prio_fb: &r2
+    <<: *r1_defaults
+    description: "Batch 2: LNG not corrected; FuelEU priority allocation; VLSFO or LNG base; exact shares; clean objective"
+    scope_mode: mrv_priority
+    base_fuels: [VLSFO, LNG]
+    exact_blend: true
+    clean_objective: true
+
+  r1_lng_otto_ms_prio_fb:
+    <<: *r2
+    description: "Batch 2: Annex II Otto medium-speed LNG (3.1%); FuelEU priority allocation; VLSFO or LNG base"
+    lng_cslip_pct: 3.1
+
+  r1_lng_otto_ss_prio_fb:
+    <<: *r2
+    description: "Batch 2: Annex II Otto slow-speed LNG (1.7%); FuelEU priority allocation; VLSFO or LNG base"
+    lng_cslip_pct: 1.7
+
+  r1_lng_diesel_ss_prio_fb:
+    <<: *r2
+    description: "Batch 2: Annex II Diesel slow-speed LNG (0.2%); FuelEU priority allocation; VLSFO or LNG base"
+    lng_cslip_pct: 0.2
+
+  r1_lng_lbsi_prio_fb:
+    <<: *r2
+    description: "Batch 2: Annex II LBSI LNG (2.6%); FuelEU priority allocation; VLSFO or LNG base"
+    lng_cslip_pct: 2.6
+
+  r1_lng_v23_prio:
+    <<: *r2
+    description: "Batch 2 isolation: as r1_lng_v23_prio_fb with VLSFO as the only base"
+    base_fuels: [VLSFO]
+
+  r1_lng_otto_ms_prio:
+    <<: *r2
+    description: "Batch 2 isolation: as r1_lng_otto_ms_prio_fb with VLSFO as the only base"
+    lng_cslip_pct: 3.1
+    base_fuels: [VLSFO]
+
+  r1_lng_otto_ms_exact:
+    <<: *r2
+    description: "Decomposition step 4a: r1_lng_otto_ms plus exact share candidates (proportional allocation, reported ETS share, VLSFO base)"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv
+    base_fuels: [VLSFO]
+
+  r1_lng_otto_ms_exact_bd:
+    <<: *r2
+    description: "Factorial: proportional allocation, VLSFO base, breakdown scope weight"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_bd
+    base_fuels: [VLSFO]
+
+  r1_lng_otto_ms_prio_bd:
+    <<: *r2
+    description: "Factorial: priority allocation, VLSFO base, breakdown scope weight"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_priority_bd
+    base_fuels: [VLSFO]
+
+  r1_lng_v23_prop_fb:
+    <<: *r2
+    description: "Batch 2 isolation: as r1_lng_v23_prio_fb with proportional (no priority) FuelEU allocation"
+    scope_mode: mrv
+
+  r1_lng_otto_ms_prop_fb:
+    <<: *r2
+    description: "Batch 2 isolation: as r1_lng_otto_ms_prio_fb with proportional (no priority) FuelEU allocation"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv
+
+  r1_lng_v23_route_fb:
+    <<: *r2
+    description: "Batch 2 bound: as r1_lng_v23_prio_fb with the component burned on fully covered activity first"
+    scope_mode: mrv_routed_voyage
+
+  r1_lng_otto_ms_route_fb:
+    <<: *r2
+    description: "Batch 2 bound: as r1_lng_otto_ms_prio_fb with the component burned on fully covered activity first"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_routed_voyage
+
+  r1_lng_otto_ms_prio_fb_bd:
+    <<: *r2
+    description: "Batch 3: as r1_lng_otto_ms_prio_fb with the scope weight from the MRV voyage breakdown"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_priority_bd
+
+  r1_lng_v23_prio_fb_bd:
+    <<: *r2
+    description: "Batch 3: as r1_lng_v23_prio_fb with the scope weight from the MRV voyage breakdown"
+    scope_mode: mrv_priority_bd
+
+  r1_lng_otto_ss_prio_fb_bd:
+    <<: *r2
+    description: "Batch 4: Otto slow-speed LNG (1.7%); priority allocation; breakdown scope weight"
+    lng_cslip_pct: 1.7
+    scope_mode: mrv_priority_bd
+
+  r1_lng_diesel_ss_prio_fb_bd:
+    <<: *r2
+    description: "Batch 4: Diesel slow-speed LNG (0.2%); priority allocation; breakdown scope weight"
+    lng_cslip_pct: 0.2
+    scope_mode: mrv_priority_bd
+
+  r1_lng_lbsi_prio_fb_bd:
+    <<: *r2
+    description: "Batch 4: LBSI LNG (2.6%); priority allocation; breakdown scope weight"
+    lng_cslip_pct: 2.6
+    scope_mode: mrv_priority_bd
+
+  r1_lng_otto_ms_prop_fb_bd:
+    <<: *r2
+    description: "Batch 4: Otto medium-speed LNG; proportional allocation; breakdown scope weight"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_bd
+
+  r1_lng_otto_ms_route_fb_bd:
+    <<: *r2
+    description: "Batch 4: Otto medium-speed LNG; voyage routing; breakdown scope weight"
+    lng_cslip_pct: 3.1
+    scope_mode: mrv_routed_voyage_bd

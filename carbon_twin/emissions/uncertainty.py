@@ -1,5 +1,3 @@
-"""Uncertainty quantification for emission estimates."""
-
 from __future__ import annotations
 
 from copy import deepcopy
@@ -16,22 +14,6 @@ def conformal_prediction_interval(
     y_new_pred: np.ndarray,
     alpha: float = 0.1,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Split conformal prediction intervals.
-
-    Uses the calibration residuals from ``(y_true, y_pred)`` to construct
-    distribution-free intervals at level ``1 - alpha`` for ``y_new_pred``.
-
-    Parameters
-    ----------
-    y_true : (n_cal,) calibration true values
-    y_pred : (n_cal,) calibration predicted values
-    y_new_pred : (n_new,) new predictions to wrap with intervals
-    alpha : miscoverage rate (default 0.1 for 90 % intervals)
-
-    Returns
-    -------
-    lower, upper : (n_new,) arrays
-    """
     y_true = np.asarray(y_true, dtype=np.float64)
     y_pred = np.asarray(y_pred, dtype=np.float64)
     y_new_pred = np.asarray(y_new_pred, dtype=np.float64)
@@ -53,22 +35,6 @@ def bootstrap_uncertainty(
     X: np.ndarray,
     n_bootstrap: int = 100,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Bootstrap prediction uncertainty via repeated prediction on resampled data.
-
-    Re-trains the model on bootstrap samples of ``X`` (paired with the model's
-    own predictions as pseudo-targets when true labels are unavailable) to
-    estimate epistemic uncertainty.
-
-    Parameters
-    ----------
-    model : fitted estimator with ``predict(X)``
-    X : (n, d) feature matrix
-    n_bootstrap : number of bootstrap iterations
-
-    Returns
-    -------
-    lower, upper : (n,) arrays at 95 % level
-    """
     X = np.asarray(X, dtype=np.float64)
     n = X.shape[0]
     rng = np.random.default_rng(42)
@@ -81,7 +47,6 @@ def bootstrap_uncertainty(
         X_boot = X[idx]
         y_boot = base_pred[idx]
 
-        # Clone and retrain on bootstrap sample
         try:
             from sklearn.base import clone
 
@@ -89,7 +54,6 @@ def bootstrap_uncertainty(
             m.fit(X_boot, y_boot)
             preds[b] = m.predict(X)
         except Exception:
-            # Fall back to perturbation-based uncertainty
             noise = rng.normal(0, np.std(base_pred) * 0.05, size=n)
             preds[b] = base_pred + noise
 
@@ -102,21 +66,6 @@ def propagate_emission_uncertainty(
     emission_estimate: EmissionEstimate,
     factor_uncertainty_pct: float = 0.05,
 ) -> EmissionEstimate:
-    """Add confidence bounds to an emission estimate via error propagation.
-
-    Assumes independent symmetric uncertainty on emission factors (as a
-    fraction of the point estimate).  Propagates through quadrature for
-    the TTW total.
-
-    Parameters
-    ----------
-    emission_estimate : base point estimate
-    factor_uncertainty_pct : relative uncertainty on emission factors (0.05 = 5 %)
-
-    Returns
-    -------
-    Copy with ``confidence_lower`` and ``confidence_upper`` populated.
-    """
     est = deepcopy(emission_estimate)
 
     co2_unc = est.co2_tonnes * factor_uncertainty_pct
@@ -138,22 +87,6 @@ def calibration_curve(
     y_pred_upper: np.ndarray,
     quantiles: np.ndarray | list[float],
 ) -> dict[str, np.ndarray]:
-    """Evaluate empirical coverage of prediction intervals.
-
-    For each desired nominal coverage level ``q`` in ``quantiles``, compute the
-    fraction of true values falling within symmetrically-rescaled intervals.
-
-    Parameters
-    ----------
-    y_true : (n,) true values
-    y_pred_lower : (n,) lower bounds of some base interval
-    y_pred_upper : (n,) upper bounds of some base interval
-    quantiles : list of nominal coverage levels (e.g. [0.5, 0.8, 0.9, 0.95])
-
-    Returns
-    -------
-    dict with keys 'nominal_coverage', 'empirical_coverage', 'n_samples'
-    """
     y_true = np.asarray(y_true, dtype=np.float64)
     y_pred_lower = np.asarray(y_pred_lower, dtype=np.float64)
     y_pred_upper = np.asarray(y_pred_upper, dtype=np.float64)
@@ -165,8 +98,6 @@ def calibration_curve(
     empirical = np.zeros(len(quantiles))
 
     for i, q in enumerate(quantiles):
-        # Scale the interval to the desired coverage level
-        # Assumes the base interval is ~95 %; rescale via normal approximation
         base_z = 1.96
         target_z = _normal_quantile((1 + q) / 2.0)
         scale = target_z / base_z if base_z > 0 else 1.0
@@ -184,7 +115,6 @@ def calibration_curve(
 
 
 def _normal_quantile(p: float) -> float:
-    """Approximate inverse normal CDF using Beasley-Springer-Moro algorithm."""
     from scipy.stats import norm
 
     return float(norm.ppf(p))

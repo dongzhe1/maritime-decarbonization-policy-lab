@@ -1,5 +1,3 @@
-"""Regulation version management: load, validate, and retrieve versioned parameters."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,7 +7,6 @@ import yaml
 
 
 class RegulationVersionManager:
-    """Load and serve versioned regulation parameters from YAML config."""
 
     _REGULATION_KEYS = {
         "cii": "cii",
@@ -23,9 +20,6 @@ class RegulationVersionManager:
         with open(self._config_path) as f:
             self._config: dict[str, Any] = yaml.safe_load(f)
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def get_cii_params(self, version: str) -> dict:
         return self._get_params("cii", version)
@@ -47,9 +41,6 @@ class RegulationVersionManager:
     def validate_version(self, regulation: str, version: str) -> bool:
         return version in self.list_versions(regulation)
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _get_params(self, regulation: str, version: str) -> dict:
         key = self._REGULATION_KEYS.get(regulation, regulation)

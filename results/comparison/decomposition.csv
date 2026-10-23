@@ -1,0 +1,36 @@
+step,variant,root,year,regret_ets_rule_M1,regret_wtw_rule_M2,pathway_ets_rule,pathway_joint,fleet_loss_eur_m,cost_basis,lambda_switches_51
+"1 + current fleet input (main-engine power, build year)",v23,main,2026,0.01622,0.02009,VLSFO_only,VLSFO+LNG,29.06194211,leg,
+"1 + current fleet input (main-engine power, build year)",v23,main,2030,0.09864,0.01121,VLSFO_only,VLSFO+LNG,194.87968838999998,leg,
+"1 + current fleet input (main-engine power, build year)",v23,main,2035,0.1892,0.00119,VLSFO_only,LNG_only,447.54147137,leg,"VLSFO_only->LNG_only (0.080, 0.085]"
+"1 + current fleet input (main-engine power, build year)",v23,main,2040,0.2522,0.15792,VLSFO_only,VLSFO+biodiesel_fame,785.386438,leg,
+"1 + current fleet input (main-engine power, build year)",v23,main,2045,0.36815,0.34355,VLSFO_only,biodiesel_fame_only,1661.4621968,leg,"VLSFO_only->LNG_only (0.000, 0.400]; LNG_only->VLSFO+biodiesel_fame (0.410, 0.415]"
+2 + LNG Annex II Otto MS slip (only),v23_lng_otto_ms,main,2026,0.0,0.00054,LNG_only,LNG_only,0.0,leg,
+2 + LNG Annex II Otto MS slip (only),v23_lng_otto_ms,main,2030,0.0038,0.00257,LNG_only,VLSFO+biodiesel_fame,7.09727084,leg,
+2 + LNG Annex II Otto MS slip (only),v23_lng_otto_ms,main,2035,0.12407,0.12037,LNG_only,VLSFO+biodiesel_fame,282.80161818,leg,"LNG_only->VLSFO+biodiesel_fame (0.510, 0.515]"
+2 + LNG Annex II Otto MS slip (only),v23_lng_otto_ms,main,2040,0.23536,0.2293,LNG_only,VLSFO+biodiesel_fame,716.15356809,leg,
+2 + LNG Annex II Otto MS slip (only),v23_lng_otto_ms,main,2045,0.36236,0.35502,LNG_only,biodiesel_fame_only,1619.23635608,leg,"LNG_only->VLSFO+biodiesel_fame (0.415, 0.420]"
+"3 + annual basis, MRV scope (proportional), RFNBO to 2033, VLSFO WtW 91.55",r1_lng_otto_ms,main,2026,0.0,0.0002,LNG_only,LNG_only,0.0,annual,
+"3 + annual basis, MRV scope (proportional), RFNBO to 2033, VLSFO WtW 91.55",r1_lng_otto_ms,main,2030,0.00068,0.00016,LNG_only,LNG_only,23.44745457,annual,
+"3 + annual basis, MRV scope (proportional), RFNBO to 2033, VLSFO WtW 91.55",r1_lng_otto_ms,main,2035,0.01464,0.01285,LNG_only,LNG_only,620.73692337,annual,
+"3 + annual basis, MRV scope (proportional), RFNBO to 2033, VLSFO WtW 91.55",r1_lng_otto_ms,main,2040,0.05475,0.05135,LNG_only,LNG_only,2643.90584707,annual,
+"3 + annual basis, MRV scope (proportional), RFNBO to 2033, VLSFO WtW 91.55",r1_lng_otto_ms,main,2045,0.11923,0.11434,LNG_only,VLSFO+biodiesel_fame,7432.36607019,annual,"LNG_only->VLSFO+biodiesel_fame (0.875, 0.880]"
+4a + exact share candidates,r1_lng_otto_ms_exact,main,2026,0.0,0.0002,LNG_only,LNG_only,0.0,annual,
+4a + exact share candidates,r1_lng_otto_ms_exact,main,2030,0.0008,0.00028,LNG_only,LNG_only,29.8858056,annual,
+4a + exact share candidates,r1_lng_otto_ms_exact,main,2035,0.01842,0.01664,LNG_only,LNG_only,773.78274908,annual,
+4a + exact share candidates,r1_lng_otto_ms_exact,main,2040,0.06528,0.06192,LNG_only,VLSFO+biodiesel_fame,3083.0633424099997,annual,
+4a + exact share candidates,r1_lng_otto_ms_exact,main,2045,0.13703,0.13223,LNG_only,VLSFO+biodiesel_fame,8464.77336061,annual,
+4b + FuelEU priority allocation,r1_lng_otto_ms_prio,main,2026,0.0,0.0002,LNG_only,LNG_only,0.0,annual,
+4b + FuelEU priority allocation,r1_lng_otto_ms_prio,main,2030,0.00086,0.00035,LNG_only,LNG_only,32.45065416,annual,
+4b + FuelEU priority allocation,r1_lng_otto_ms_prio,main,2035,0.06375,0.06205,LNG_only,VLSFO+biodiesel_fame,2132.46064255,annual,"LNG_only->VLSFO+biodiesel_fame (0.675, 0.680]"
+4b + FuelEU priority allocation,r1_lng_otto_ms_prio,main,2040,0.16249,0.15948,LNG_only,VLSFO+biodiesel_fame,6748.71523523,annual,
+4b + FuelEU priority allocation,r1_lng_otto_ms_prio,main,2045,0.27453,0.2705,LNG_only,VLSFO+biodiesel_fame,15615.860975540001,annual,"LNG_only->VLSFO+biodiesel_fame (0.490, 0.495]"
+5 + VLSFO or LNG base (central variant),r1_lng_otto_ms_prio_fb,main,2026,0.0,0.0002,LNG_only,LNG_only,0.0,annual,
+5 + VLSFO or LNG base (central variant),r1_lng_otto_ms_prio_fb,main,2030,0.03453,0.03403,LNG_only,LNG+biodiesel_fame,984.89995923,annual,
+5 + VLSFO or LNG base (central variant),r1_lng_otto_ms_prio_fb,main,2035,0.09661,0.09496,LNG_only,LNG+biodiesel_fame,3183.09844741,annual,"LNG_only->LNG+biodiesel_fame (0.475, 0.480]"
+5 + VLSFO or LNG base (central variant),r1_lng_otto_ms_prio_fb,main,2040,0.1823,0.17936,LNG_only,LNG+biodiesel_fame,7536.06731028,annual,
+5 + VLSFO or LNG base (central variant),r1_lng_otto_ms_prio_fb,main,2045,0.28092,0.27692,LNG_only,LNG+biodiesel_fame,15943.95767317,annual,"LNG_only->LNG+biodiesel_fame (0.475, 0.480]"
+5b scope weight from the MRV voyage breakdown,r1_lng_otto_ms_prio_fb_bd,main,2026,0.0,0.00022,LNG_only,LNG_only,0.0,annual,
+5b scope weight from the MRV voyage breakdown,r1_lng_otto_ms_prio_fb_bd,main,2030,0.03697,0.03642,LNG_only,LNG+biodiesel_fame,1069.9743925599998,annual,
+5b scope weight from the MRV voyage breakdown,r1_lng_otto_ms_prio_fb_bd,main,2035,0.10311,0.10131,LNG_only,LNG+biodiesel_fame,3458.31950595,annual,"LNG_only->LNG+biodiesel_fame (0.475, 0.480]"
+5b scope weight from the MRV voyage breakdown,r1_lng_otto_ms_prio_fb_bd,main,2040,0.19373,0.19052,LNG_only,LNG+biodiesel_fame,8187.0117787399995,annual,
+5b scope weight from the MRV voyage breakdown,r1_lng_otto_ms_prio_fb_bd,main,2045,0.29702,0.29269,LNG_only,LNG+biodiesel_fame,17317.3044678,annual,"LNG_only->LNG+biodiesel_fame (0.475, 0.480]"

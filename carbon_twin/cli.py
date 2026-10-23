@@ -1,5 +1,3 @@
-"""CLI entry point for ShipCarbonTwin."""
-
 from __future__ import annotations
 
 import click
@@ -8,7 +6,7 @@ import click
 @click.group()
 @click.version_option()
 def main():
-    """ShipCarbonTwin: Unified carbon compliance digital twin for shipping."""
+    pass
 
 
 @main.command()
@@ -16,7 +14,6 @@ def main():
 @click.option("--ports", required=True, type=click.Path(exists=True), help="Ports GeoJSON file")
 @click.option("--output", required=True, type=click.Path(), help="Output voyages parquet")
 def build_voyages(ais: str, ports: str, output: str):
-    """Reconstruct voyages from AIS data."""
     import pandas as pd
     import geopandas as gpd
     from carbon_twin.data.loaders import load_ais_parquet, load_ports_geojson
@@ -50,7 +47,6 @@ def build_voyages(ais: str, ports: str, output: str):
 @click.option("--output", required=True, type=click.Path())
 @click.option("--method", default="hierarchical", type=click.Choice(["simple_ratio", "ship_type_ratio", "hierarchical", "gradient_boosting"]))
 def calibrate_mrv(voyages: str, mrv: str, output: str, method: str):
-    """Calibrate emission model using MRV weak supervision."""
     import pandas as pd
     import pickle
     from carbon_twin.emissions.mrv_calibration import MRVCalibrator
@@ -79,7 +75,6 @@ def _load_scenario(path: str) -> dict:
 
 
 def _resolve_eua_price(scenario_cfg: dict, year: int) -> float:
-    """Resolve the EUA price (EUR/tCO2e) for the scenario year."""
     from carbon_twin.data.loaders import load_eua_prices
     raw = scenario_cfg.get("eua_price", "base")
     if isinstance(raw, (int, float)):
@@ -107,7 +102,6 @@ def _resolve_fuel_price(scenario_cfg: dict, fuel: str = "VLSFO") -> float:
 @click.option("--scenario", required=True, type=click.Path(exists=True))
 @click.option("--output", required=True, type=click.Path())
 def run_regulations_mrv(mrv: str, fleet: str, scenario: str, output: str):
-    """Multi-regulation compliance straight from MRV annual totals (no AIS needed)."""
     from carbon_twin.data.loaders import load_mrv_csv, load_vessels_csv
     from carbon_twin.emissions.proxy import vessels_to_index
     from carbon_twin.pipeline import assemble_compliance_from_mrv
@@ -141,7 +135,6 @@ def run_regulations_mrv(mrv: str, fleet: str, scenario: str, output: str):
 @click.option("--scenario", required=True, type=click.Path(exists=True))
 @click.option("--output", required=True, type=click.Path())
 def optimize_mrv(case: str, mrv: str, fleet: str, scenario: str, output: str):
-    """Speed optimisation + RCI from MRV operating profiles (no AIS needed)."""
     import pandas as pd
     from carbon_twin.data.loaders import load_mrv_csv, load_vessels_csv
     from carbon_twin.emissions.proxy import load_fuel_factors_safe, vessels_to_index
@@ -179,7 +172,6 @@ def optimize_mrv(case: str, mrv: str, fleet: str, scenario: str, output: str):
 @click.option("--year", required=True, type=int)
 @click.option("--output", required=True, type=click.Path())
 def build_proxy(voyages: str, fleet: str, year: int, output: str):
-    """Build per-voyage physics proxy emissions (shared by calibrate/regulations/surrogate)."""
     import pandas as pd
     from carbon_twin.data.loaders import load_vessels_csv
     from carbon_twin.emissions.proxy import (
@@ -216,7 +208,6 @@ def build_proxy(voyages: str, fleet: str, year: int, output: str):
 @click.option("--output", required=True, type=click.Path())
 def run_regulations(voyages: str, proxy: str, fleet: str, calibrator: str,
                     scenario: str, output: str):
-    """Run multi-regulation compliance assessment (CII + FuelEU + EU ETS)."""
     import pickle
     import pandas as pd
     from carbon_twin.data.loaders import load_vessels_csv
@@ -265,7 +256,6 @@ def run_regulations(voyages: str, proxy: str, fleet: str, calibrator: str,
 @click.option("--output", required=True, type=click.Path())
 def optimize(case: str, voyages: str, fleet: str, scenario: str,
              objective: str, output: str):
-    """Optimise speed jointly vs per-regulation; compute Regulation Coupling Index."""
     import pandas as pd
     from carbon_twin.data.loaders import load_vessels_csv
     from carbon_twin.emissions.proxy import load_fuel_factors_safe, vessels_to_index
@@ -304,7 +294,6 @@ def optimize(case: str, voyages: str, fleet: str, scenario: str,
 @click.option("--scenario", required=True, type=click.Path(exists=True))
 @click.option("--output", required=True, type=click.Path())
 def run_scenarios(case: str, n: int, scenario: str, output: str):
-    """Run Monte Carlo uncertainty analysis over EUA / fuel prices."""
     import json
     from pathlib import Path
     import pandas as pd
@@ -336,7 +325,6 @@ def run_scenarios(case: str, n: int, scenario: str, output: str):
               type=click.Choice(["markdown", "html", "json", "latex"]))
 @click.option("--output", required=True, type=click.Path())
 def report(results: str, fmt: str, output: str):
-    """Generate paper figures and tables from results."""
     from pathlib import Path
     import pandas as pd
     from carbon_twin.reports.paper_outputs import generate_all_paper_outputs
@@ -344,7 +332,6 @@ def report(results: str, fmt: str, output: str):
     results_dir = Path(results)
     payload: dict = {}
 
-    # Search both flat and subdir layouts for each artifact
     def _first_existing(*candidates: str):
         for c in candidates:
             p = results_dir / c
@@ -355,7 +342,6 @@ def report(results: str, fmt: str, output: str):
     compliance_path = _first_existing("compliance.parquet", "compliance/compliance.parquet")
     if compliance_path:
         comp = pd.read_parquet(compliance_path)
-        # Aliases the figure helpers expect
         if "cii_rating" in comp.columns:
             comp["rating"] = comp["cii_rating"]
         if {"cii_attained", "cii_required"}.issubset(comp.columns):
@@ -373,21 +359,18 @@ def report(results: str, fmt: str, output: str):
         if "total_compliance_cost_eur" in mc.columns and "total_cost_eur" not in mc.columns:
             mc["total_cost_eur"] = mc["total_compliance_cost_eur"]
         payload["mc_results"] = mc
-        # scenario_results is for multi-scenario sensitivity tables; a single-scenario
-        # MC run doesn't have a 'scenario' column, so don't pass it here.
 
     click.echo(f"Generating {fmt} outputs from {len(payload)} result set(s)...")
     try:
         out = generate_all_paper_outputs(payload, output_dir=output)
         click.echo(f"  {len(out.get('figures', []))} figures, {len(out.get('tables', []))} tables")
-    except Exception as exc:  # plotting is best-effort; never lose the run over a figure
+    except Exception as exc:
         click.echo(f"  [WARN] report generation hit an error: {exc}")
     click.echo(f"Report saved to {output}")
 
 
 @main.command()
 def dashboard():
-    """Launch Streamlit dashboard."""
     import subprocess
     import sys
 

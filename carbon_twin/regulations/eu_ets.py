@@ -1,5 +1,3 @@
-"""EU ETS for maritime (Directive 2023/959) compliance engine."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -14,7 +12,6 @@ from carbon_twin.data.schemas import (
 )
 from carbon_twin.regulations.versioning import RegulationVersionManager
 
-# Mapping from EEA scope to the fraction of emissions covered
 _SCOPE_FACTORS: dict[EEAScope, float] = {
     EEAScope.INTRA_EEA: 1.0,
     EEAScope.INTO_EEA: 0.5,
@@ -25,7 +22,6 @@ _SCOPE_FACTORS: dict[EEAScope, float] = {
 
 
 class ETSEngine:
-    """EU ETS maritime allowance and cost calculation engine."""
 
     def __init__(
         self,
@@ -38,9 +34,6 @@ class ETSEngine:
         )
         self._params: dict[str, Any] = mgr.get_ets_params(version)
 
-    # ------------------------------------------------------------------
-    # Public
-    # ------------------------------------------------------------------
 
     def evaluate(
         self,
@@ -50,16 +43,11 @@ class ETSEngine:
         year: int,
         port_calls: list[PortCall] | None = None,
     ) -> list[ETSResult]:
-        """Evaluate EU ETS obligations for a set of voyages and their emissions.
-
-        Returns one ETSResult per unique vessel IMO in the input.
-        """
         emission_map: dict[str, EmissionEstimate] = {}
         for em in emissions:
             if em.voyage_id:
                 emission_map[em.voyage_id] = em
 
-        # Compute per-voyage covered emissions
         vessel_voyage_results: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for voy in voyages:
             em = emission_map.get(voy.voyage_id)
@@ -68,7 +56,6 @@ class ETSEngine:
             covered = self._voyage_covered_emissions(voy, em, year)
             vessel_voyage_results[voy.vessel_imo].append(covered)
 
-        # Aggregate per vessel
         results: list[ETSResult] = []
         for imo, voy_results in vessel_voyage_results.items():
             results.append(
@@ -85,9 +72,6 @@ class ETSEngine:
     ) -> list[ETSResult]:
         return self.evaluate(fleet_voyages, fleet_emissions, eua_price, year)
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _voyage_covered_emissions(
         self,
@@ -98,15 +82,12 @@ class ETSEngine:
         scope = voyage.eea_scope
         scope_factor = _SCOPE_FACTORS.get(scope, 0.0)
 
-        # Override from voyage-level ets_scope_factor if set explicitly
         if voyage.ets_scope_factor > 0:
             scope_factor = voyage.ets_scope_factor
 
         phase_in = self._phase_in_factor(year)
         include_non_co2 = self._include_non_co2(year)
 
-        # EU ETS covers tank-to-wake (combustion) emissions, not well-to-wake.
-        # From 2026, CH4 and N2O are added on a CO2e basis -> use TtW CO2e.
         if include_non_co2:
             total_emissions = (
                 emission.co2e_ttw_tonnes
@@ -144,7 +125,6 @@ class ETSEngine:
         return 1.0
 
     def _include_non_co2(self, year: int) -> bool:
-        """CH4 and N2O are included from 2026 onward."""
         gases_2026 = self._params.get("gases_2026", [])
         if len(gases_2026) > 1 and year >= 2026:
             return True

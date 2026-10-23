@@ -1,0 +1,25 @@
+{
+  "base_fuels": [
+    "VLSFO",
+    "LNG"
+  ],
+  "clean_objective": true,
+  "description": "Batch 3: as r1_lng_v23_prio_fb with the scope weight from the MRV voyage breakdown",
+  "exact_blend": true,
+  "fueleu_factors_from_config": true,
+  "fueleu_gwp": {
+    "CH4": 25.0,
+    "N2O": 298.0
+  },
+  "fueleu_version": "EU_2023_1805_r1",
+  "lng_cslip_pct": null,
+  "lng_factors_derived": null,
+  "lng_wtt_g_per_mj": 18.5,
+  "name": "r1_lng_v23_prio_fb_bd",
+  "report_annual": true,
+  "scope_mode": "mrv_priority_bd",
+  "wtw_overrides": {
+    "MGO": 90.77,
+    "VLSFO": 91.55
+  }
+}

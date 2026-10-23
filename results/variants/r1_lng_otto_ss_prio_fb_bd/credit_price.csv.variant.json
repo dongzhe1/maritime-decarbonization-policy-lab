@@ -1,0 +1,33 @@
+{
+  "base_fuels": [
+    "VLSFO",
+    "LNG"
+  ],
+  "clean_objective": true,
+  "description": "Batch 4: Otto slow-speed LNG (1.7%); priority allocation; breakdown scope weight",
+  "exact_blend": true,
+  "fueleu_factors_from_config": true,
+  "fueleu_gwp": {
+    "CH4": 25.0,
+    "N2O": 298.0
+  },
+  "fueleu_version": "EU_2023_1805_r1",
+  "lng_cslip_pct": 1.7,
+  "lng_factors_derived": {
+    "cslip_pct": 1.7,
+    "ets_ttw_co2e_g_per_mj": 65.33410285132383,
+    "fueleu_ttw_co2e_g_per_mj": 64.3680802443992,
+    "ttw_ch4_g_per_g_fuel": 0.017,
+    "ttw_co2_g_per_g_fuel": 2.70325,
+    "ttw_n2o_g_per_g_fuel": 0.00010813,
+    "wtw_co2e_g_per_mj": 82.8680802443992
+  },
+  "lng_wtt_g_per_mj": 18.5,
+  "name": "r1_lng_otto_ss_prio_fb_bd",
+  "report_annual": true,
+  "scope_mode": "mrv_priority_bd",
+  "wtw_overrides": {
+    "MGO": 90.77,
+    "VLSFO": 91.55
+  }
+}

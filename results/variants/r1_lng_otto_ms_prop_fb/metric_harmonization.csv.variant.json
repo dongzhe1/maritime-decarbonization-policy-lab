@@ -1,0 +1,33 @@
+{
+  "base_fuels": [
+    "VLSFO",
+    "LNG"
+  ],
+  "clean_objective": true,
+  "description": "Batch 2 isolation: as r1_lng_otto_ms_prio_fb with proportional (no priority) FuelEU allocation",
+  "exact_blend": true,
+  "fueleu_factors_from_config": true,
+  "fueleu_gwp": {
+    "CH4": 25.0,
+    "N2O": 298.0
+  },
+  "fueleu_version": "EU_2023_1805_r1",
+  "lng_cslip_pct": 3.1,
+  "lng_factors_derived": {
+    "cslip_pct": 3.1,
+    "ets_ttw_co2e_g_per_mj": 72.52538391038696,
+    "fueleu_ttw_co2e_g_per_mj": 70.70292912423625,
+    "ttw_ch4_g_per_g_fuel": 0.031,
+    "ttw_co2_g_per_g_fuel": 2.6647499999999997,
+    "ttw_n2o_g_per_g_fuel": 0.00010659,
+    "wtw_co2e_g_per_mj": 89.20292912423625
+  },
+  "lng_wtt_g_per_mj": 18.5,
+  "name": "r1_lng_otto_ms_prop_fb",
+  "report_annual": true,
+  "scope_mode": "mrv",
+  "wtw_overrides": {
+    "MGO": 90.77,
+    "VLSFO": 91.55
+  }
+}

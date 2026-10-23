@@ -1,5 +1,3 @@
-"""Speed optimization under regulatory constraints."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -13,7 +11,6 @@ from carbon_twin.emissions.factors import (
     get_co2e_ttw,
 )
 
-# Energy content of one tonne of VLSFO-equivalent (MJ); FuelEU Annex IV constant.
 _VLSFO_ENERGY_MJ_PER_TONNE: float = 41000.0
 from carbon_twin.emissions.physics import (
     _estimate_displacement,
@@ -24,10 +21,6 @@ from carbon_twin.emissions.physics import (
 )
 
 
-# Slow-steaming floor as a fraction of design speed. Since power ∝ speed³, a
-# 0.5×design floor corresponds to ~12% MCR — the practical super-slow-steaming
-# limit. An absolute 6 kn floor preserves steerage. Commercial operation does
-# not exceed design speed, so that is the upper bound.
 _MIN_SPEED_FRACTION: float = 0.5
 _ABS_MIN_SPEED: float = 6.0
 
@@ -35,13 +28,6 @@ _ABS_MIN_SPEED: float = 6.0
 def speed_bounds(
     vessel: Vessel, operating_speed: float | None = None
 ) -> tuple[float, float]:
-    """Realistic per-vessel optimization band [v_min, v_max] in knots.
-
-    Replaces the flat (8, 22) band that let every vessel rail to an unrealistic
-    8 kn floor. Anchored on the vessel's design speed (now real, from the IHS
-    register). The actual operating speed, if known, is always kept inside the
-    band so the optimizer can reproduce it.
-    """
     from carbon_twin.emissions.physics import _DESIGN_SPEEDS
 
     design = vessel.design_speed_knots or _DESIGN_SPEEDS.get(vessel.ship_type, 14.0)
@@ -118,11 +104,6 @@ def optimal_speed_single_voyage(
     scheduled_hours: float | None = None,
     energy_scale: float = 1.0,
 ) -> dict[str, Any]:
-    """Brute-force speed optimization over a grid.
-
-    Total cost = fuel_cost + ets_cost + fueleu_penalty_share + delay_cost.
-    Returns optimal speed and associated costs.
-    """
     speeds = np.linspace(speed_range[0], speed_range[1], n_points)
     best: dict[str, Any] = {}
     best_total = float("inf")
@@ -181,7 +162,6 @@ def speed_cost_curve(
     speeds: list[float] | np.ndarray | None = None,
     fuel_type: FuelType = FuelType.VLSFO,
 ) -> pd.DataFrame:
-    """Compute cost at each speed point."""
     if speeds is None:
         speeds = np.linspace(8, 22, 50)
     speeds = np.asarray(speeds, dtype=float)
@@ -209,10 +189,6 @@ def speed_cost_curve(
 
 
 def _cii_capacity(vessel: Vessel) -> float:
-    """MEPC capacity for this vessel — mirrors the CII engine's basis (GT vs DWT
-    per ship type / DWT threshold). Used only for the engine-absent fallback;
-    when an engine is present the optimizer defers to it so the attained-CII
-    denominator and the rating always agree (see _cii_annual_penalty)."""
     try:
         from carbon_twin.regulations.cii import CIIEngine
         return CIIEngine.capacity_for(vessel)
@@ -222,14 +198,6 @@ def _cii_capacity(vessel: Vessel) -> float:
         return vessel.gross_tonnage
 
 
-# Default CII consequence model. The penalty is a charter-rate discount that
-# grows with how far a vessel's carbon-intensity ratio sits beyond the C/D
-# compliance boundary. This replaces an arbitrary 50k/100k step (which created a
-# discontinuity and an undefendable magnitude) with a continuous, interpretable
-# cost. `cii_pressure` (k) is the discount sensitivity and the single knob for
-# the RCI sensitivity sweep; default 0.2 ≈ a ~2–3% charter discount for a solidly
-# D/E vessel — consistent with emerging charter-market signals. See
-# docs/coupling_model_design.md.
 _DEFAULT_CII_PRESSURE: float = 0.2
 _CII_OPERATING_DAYS: float = 300.0
 
@@ -244,14 +212,6 @@ def _cii_annual_penalty(
     charter_per_day: float,
     cii_rho_multiplier: float = 1.0,
 ) -> tuple[float, float]:
-    """Return (annual_penalty_eur, attained_cii).
-
-    Continuous: penalty = charter_per_day · operating_days · k · max(0, ratio −
-    ratio_CD), where ratio_CD is the C/D boundary. Zero for A/B/C, ramps into
-    D/E. The caller scales this annual figure to the representative leg so it sits
-    on the same basis as fuel/ETS. Falls back to attained-only when no engine or
-    no pressure/charter context is available.
-    """
     capacity = _cii_capacity(vessel)
     attained = (annual_co2_tonnes * 1e6) / (capacity * annual_dist_nm)
 
@@ -259,9 +219,6 @@ def _cii_annual_penalty(
         return 0.0, attained
 
     try:
-        # Pass capacity=None so the engine selects the correct MEPC basis
-        # (GT vs DWT, incl. DWT thresholds) itself — overriding it here is what
-        # previously inflated RCI for GT-based types (vehicle carrier, ro-pax).
         result = cii_engine.evaluate(
             vessel=vessel,
             annual_co2_tonnes=annual_co2_tonnes,
@@ -271,9 +228,6 @@ def _cii_annual_penalty(
         )
         attained = result.attained_cii
         ratio_cd = cii_engine.cd_boundary_ratio(vessel.ship_type.value, vessel.deadweight)
-        # cii_rho_multiplier scales the attained/required ratio to probe the
-        # EU-MRV-vs-official-CII scope bias (1.0 = neutral; see configs/
-        # mrv_cii_proxy_bias_scenarios.csv).
         excess = max(0.0, result.ratio * cii_rho_multiplier - ratio_cd)
     except Exception:
         return 0.0, attained
@@ -289,12 +243,8 @@ def _fueleu_penalty(
     energy_mj: float,
     year: int,
     fuel_factors: dict[FuelType, FuelEmissionFactors] | None,
+    emission_factors: dict[str, float] | None = None,
 ) -> float:
-    """FuelEU penalty (EUR) for burning ``energy_mj`` of ``fuel_type``.
-
-    Delegates to the engine when available; otherwise applies the same
-    Annex IV formula directly so the magnitude stays correct.
-    """
     if energy_mj <= 0:
         return 0.0
 
@@ -311,12 +261,12 @@ def _fueleu_penalty(
                 fuel_records=[record],
                 energy_mj=energy_mj,
                 year=year,
+                emission_factors=emission_factors,
             )
             return result.penalty_eur
         except Exception:
             pass
 
-    # Fallback: Annex IV formula |balance| / (actual * 41000) * 2400.
     if not fuel_factors or fuel_type not in fuel_factors:
         return 0.0
     actual = fuel_factors[fuel_type].wtw_co2e_g_per_mj
@@ -347,19 +297,9 @@ def optimal_speed_multi_regulation(
     cii_pressure: float = _DEFAULT_CII_PRESSURE,
     cii_rho_multiplier: float = 1.0,
     energy_scale: float = 1.0,
+    fueleu_scope_factor: float = 1.0,
+    fueleu_emission_factors: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """Speed optimization including CII impact in annual context.
-
-    Evaluates each speed point for fuel cost, ETS cost, FuelEU penalty share,
-    and CII rating implications. The CII consequence is a continuous,
-    charter-anchored cost (see ``_cii_annual_penalty``); ``cii_pressure`` scales
-    it and is the knob for the RCI sensitivity sweep.
-
-    The passed ``cii_engine``, ``fueleu_engine`` and ``ets_engine`` are used
-    directly (regulation-as-code), so the active regulation *version* drives the
-    optimisation. When an engine is ``None`` a dimensionally-correct fallback is
-    used instead.
-    """
     speeds = np.linspace(speed_range[0], speed_range[1], n_points)
     best: dict[str, Any] = {}
     best_total = float("inf")
@@ -369,7 +309,6 @@ def optimal_speed_multi_regulation(
     annual_dist = annual_distance_nm or voyage.distance_nm * 12
     annual_fuel_scale = annual_dist / max(voyage.distance_nm, 1.0)
 
-    # ETS phase-in is version-specific; honour the engine if available.
     ets_phase_in = 1.0
     if ets_engine is not None and hasattr(ets_engine, "_phase_in_factor"):
         try:
@@ -377,14 +316,10 @@ def optimal_speed_multi_regulation(
         except Exception:
             ets_phase_in = 1.0
 
-    # Charter day-rate underlying both the delay cost and the CII consequence.
     charter_per_day = delay_cost_per_hour * 24.0
 
     for spd in speeds:
         fc = _fuel_at_speed(vessel, voyage, float(spd), fuel_type, fuel_factors)
-        # energy_scale: MRV-calibration multiplier; scales fuel mass/energy so the
-        # vessel's baseline emissions are anchored to its MRV-reported CO2 while
-        # preserving the cubic-law speed elasticity. Delay cost is time-based, unscaled.
         scaled_tonnes = fc["total_tonnes"] * energy_scale
         scaled_energy = fc["energy_mj"] * energy_scale
         fuel_cost = scaled_tonnes * fuel_price
@@ -393,18 +328,15 @@ def optimal_speed_multi_regulation(
 
         annual_co2 = co2e * annual_fuel_scale
 
-        # ---- CII: continuous charter-anchored consequence, computed in annual
-        # context then scaled to the representative leg so it sits on the same
-        # basis as fuel/ETS (which are per-leg).
         cii_annual, attained_cii = _cii_annual_penalty(
             cii_engine, vessel, annual_co2, annual_dist, year,
             cii_pressure, charter_per_day, cii_rho_multiplier,
         )
         cii_penalty = cii_annual / max(annual_fuel_scale, 1.0)
 
-        # ---- FuelEU: penalty from the engine (Annex IV formula).
         fueleu_penalty = _fueleu_penalty(
-            fueleu_engine, vessel, fuel_type, scaled_energy, year, fuel_factors
+            fueleu_engine, vessel, fuel_type, scaled_energy * fueleu_scope_factor,
+            year, fuel_factors, emission_factors=fueleu_emission_factors,
         )
 
         delay_cost = 0.0

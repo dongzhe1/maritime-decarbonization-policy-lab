@@ -1,5 +1,3 @@
-"""Fuel emission factors and CO2-equivalent calculations."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,7 +13,6 @@ GWP100: dict[str, float] = {"CO2": 1.0, "CH4": 28.0, "N2O": 265.0}
 
 @dataclass(frozen=True, slots=True)
 class FuelEmissionFactors:
-    """Emission factors for a single fuel type."""
 
     lcv_mj_per_kg: float = 0.0
     density_kg_per_m3: float = 0.0
@@ -29,7 +26,6 @@ class FuelEmissionFactors:
 
 
 def load_emission_factors(config_path: str | Path) -> dict[FuelType, FuelEmissionFactors]:
-    """Load per-fuel emission factors from a YAML config file."""
     config_path = Path(config_path)
     with open(config_path) as f:
         raw: dict[str, Any] = yaml.safe_load(f)
@@ -59,7 +55,7 @@ def load_emission_factors(config_path: str | Path) -> dict[FuelType, FuelEmissio
     return factors
 
 
-_DEFAULT_TTW_CO2_G_PER_G: float = 3.114  # VLSFO / HFO-like fallback
+_DEFAULT_TTW_CO2_G_PER_G: float = 3.114
 
 
 def get_co2e_ttw(
@@ -67,9 +63,8 @@ def get_co2e_ttw(
     mass_tonnes: float,
     factors: dict[FuelType, FuelEmissionFactors],
 ) -> float:
-    """Tank-to-wake CO2-equivalent in tonnes, using GWP-100 weighting."""
     if fuel_type not in factors:
-        return mass_tonnes * _DEFAULT_TTW_CO2_G_PER_G  # fallback: 1 tonne fuel → ~3.114 t CO2
+        return mass_tonnes * _DEFAULT_TTW_CO2_G_PER_G
     ef = factors[fuel_type]
     mass_g = mass_tonnes * 1e6
     co2_g = ef.ttw_co2_g_per_g_fuel * mass_g
@@ -84,7 +79,6 @@ def get_co2e_wtw(
     energy_mj: float,
     factors: dict[FuelType, FuelEmissionFactors],
 ) -> float:
-    """Well-to-wake CO2-equivalent in tonnes from energy consumed."""
     if fuel_type not in factors:
         raise KeyError(f"No emission factors for fuel type {fuel_type}")
     ef = factors[fuel_type]
@@ -96,11 +90,6 @@ def get_ghg_intensity_wtw(
     fuel_records: list[FuelRecord],
     factors: dict[FuelType, FuelEmissionFactors],
 ) -> float:
-    """Energy-weighted average WTW GHG intensity in gCO2e/MJ (for FuelEU Maritime).
-
-    Each fuel record contributes its energy (mass * LCV) and the corresponding
-    WTW emissions.  Returns the total-energy-weighted average intensity.
-    """
     total_energy_mj = 0.0
     total_co2e_g = 0.0
 
