@@ -1,0 +1,13 @@
+ship_type,n,deficit_vessel_share,surplus_vessel_share,penalty_total_eur,surplus_penalised_check_eur
+bulk_carrier,3648,1.0,0.0,81691517.33,0.0
+container_ship,1986,1.0,0.0,291179752.39,0.0
+cruise_passenger,220,1.0,0.0,40455293.64,0.0
+gas_carrier,305,1.0,0.0,11441105.49,0.0
+general_cargo,1428,1.0,0.0,37982346.8,0.0
+lng_carrier,328,1.0,0.0,52391822.38,0.0
+refrigerated_cargo,116,1.0,0.0,5020715.32,0.0
+ro_pax,419,1.0,0.0,76617424.57,0.0
+ro_ro_cargo,260,1.0,0.0,33051137.73,0.0
+tanker,3219,1.0,0.0,147475599.99,0.0
+vehicle_carrier,473,1.0,0.0,26505762.0,0.0
+ALL,12402,1.0,0.0,803812477.64,0.0

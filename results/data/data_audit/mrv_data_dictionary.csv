@@ -1,0 +1,11 @@
+internal_name,definition,role,present,non_null_share
+imo_number,IMO ship identification number,key for matching to vessel particulars,True,1.0
+ship_type,MRV ship type,descriptive only; analysis uses the particulars ship type,True,1.0
+total_co2_tonnes,"Total CO2 emissions [m tonnes], all EEA-related voyages and berth",CII proxy numerator; scope-weight denominator; MRV calibration anchor,True,1.0
+co2_ets_tonnes,CO2 emissions to be reported under Directive 2003/87/EC [m tonnes],ETS-scoped CO2; numerator of the ETS/FuelEU scope weight,True,1.0
+total_fuel_tonnes,Total fuel consumption [m tonnes],FuelEU audit energy; distance back-calculation,True,1.0
+distance_nm,Distance travelled [n miles] (absent from 2022+ exports),annual distance,False,0.0
+fuel_per_nm_kg,Fuel consumption per distance [kg / n mile],distance = fuel x 1000 / fuel_per_nm when distance_nm is absent,True,0.9151
+co2_per_nm_kg,CO2 emissions per distance [kg CO2 / n mile],fallback distance back-calculation,True,0.9151
+hours_at_sea,Time spent at sea [hours],MRV-implied operating speed = distance / hours,True,1.0
+transport_work,Transport work [m.t.*n miles],descriptive only,False,0.0

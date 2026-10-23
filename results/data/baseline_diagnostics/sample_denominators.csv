@@ -1,0 +1,7 @@
+sample_name,n,used_for,exclusion_reason
+mrv_reporting,14149,EU-MRV reporting population,-
+matched_to_particulars,13544,fleet cost totals,no vessel particulars match
+cii_proxy_valid,12327,CII proxy rating mix,missing/implausible CII inputs
+rci_optimisation,12333,speed/fuel RCI,fails optimisation-input filters
+fueleu_audit,12402,FuelEU scope/balance audit,no FuelEU balance
+mrv_implied_speed,12272,operating-speed validation,no design speed/hours

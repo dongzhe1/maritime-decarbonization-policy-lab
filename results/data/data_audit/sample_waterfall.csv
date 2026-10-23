@@ -1,0 +1,11 @@
+step,definition,n
+mrv_rows,rows in the MRV file,14149
+mrv_unique_imo,unique IMO numbers,14149
+duplicate_imo_rows,rows sharing an IMO with another row,0
+matched_rows,rows matched to vessel particulars (IMO),13544
+matched_unique_imo,unique matched IMO numbers,13544
+optimisation_rows,matched and annual distance >= 500 nm,12333
+optimisation_unique_imo,unique IMO numbers in the optimisation sample,12333
+cii_valid,optimisation filter + CO2 > 0 + attained CII <= 100,12327
+fueleu_audit,matched + MRV fuel > 0,12402
+speed_sample,optimisation sample with a recorded design speed,12272

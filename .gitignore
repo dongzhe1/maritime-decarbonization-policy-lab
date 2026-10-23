@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
-fake/
-out/
-data/
+/fake/
+/out/
+/data/

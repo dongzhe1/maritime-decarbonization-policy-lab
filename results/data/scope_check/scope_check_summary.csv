@@ -1,0 +1,9 @@
+s_band,class,n,s_reported_median,s_breakdown_median,co2_share_of_sample
+s=0,no_breakdown,5,0.0,,5e-05
+s=0,reported_below,267,0.0,0.5657,0.01765
+0<s<=0.25,reported_below,332,0.0968,0.6161,0.03308
+0.25<s<0.5,consistent,14,0.4956,0.506,0.00174
+0.25<s<0.5,reported_below,422,0.4094,0.5695,0.04507
+s>=0.5,consistent,10767,0.5594,0.5596,0.82995
+s>=0.5,reported_above,14,0.6711,0.5907,0.00093
+s>=0.5,reported_below,512,0.6166,0.7277,0.07154

@@ -1,0 +1,4 @@
+group,n,total_mrv_co2_t,mean_co2_t,median_co2_t,mean_distance_nm
+matched_cii_valid,12327,143339868.8,11628.1,6049.9,28273.1
+matched_not_cii_valid,1217,113302.4,93.1,0.0,952.1
+unmatched,605,3656004.4,6043.0,3937.8,21477.7

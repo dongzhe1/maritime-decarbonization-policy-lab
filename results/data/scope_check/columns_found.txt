@@ -1,0 +1,58 @@
+MRV file: 2024_renamed.csv
+rows: 14149
+
+breakdown columns matched:
+  between: CO₂ emissions from all voyages between ports under a MS jurisdiction [m tonnes]
+  departed: CO₂ emissions from all voyages which departed from ports under a MS jurisdiction [m tonnes]
+  arrived: CO₂ emissions from all voyages to ports under a MS jurisdiction [m tonnes]
+  port: CO₂ emissions which occurred within ports under a MS jurisdiction [m tonnes]
+  berth: CO₂ emissions which occurred within ports under a MS jurisdiction at berth [m tonnes]
+
+all columns mentioning CO2:
+  total_co2_tonnes
+  CO₂ emissions from all voyages between ports under a MS jurisdiction [m tonnes]
+  CO₂ emissions from all voyages which departed from ports under a MS jurisdiction [m tonnes]
+  CO₂ emissions from all voyages to ports under a MS jurisdiction [m tonnes]
+  CO₂ emissions which occurred within ports under a MS jurisdiction at berth [m tonnes]
+  CO₂ emissions which occurred within ports under a MS jurisdiction [m tonnes]
+  CO₂ emissions assigned to On laden [m tonnes]
+  CO₂ emissions assigned to Passenger transport [m tonnes]
+  CO₂ emissions assigned to Freight transport [m tonnes]
+  co2_ets_tonnes
+  total_co2eq_tonnes
+  CO₂eq emissions from all voyages between ports under a MS jurisdiction [m tonnes]
+  CO₂eq emissions from all voyages which departed from ports under a MS jurisdiction [m tonnes]
+  CO₂eq emissions from all voyages to ports under a MS jurisdiction [m tonnes]
+  CO₂eq emissions which occurred within ports under a MS jurisdiction at berth [m tonnes]
+  CO₂eq emissions which occurred within ports under a MS jurisdiction [m tonnes]
+  CO₂eq emissions assigned to On laden [m tonnes]
+  CO₂eq emissions assigned to Passenger transport [m tonnes]
+  CO₂eq emissions assigned to Freight transport [m tonnes]
+  CO₂eq emissions to be reported under Directive 2003/87/EC [m tonnes]
+  CO₂eq emissions benefitting from a derogation in accordance with Part C, point 1.2, of Annex II to Regulation (EU) 2015/757 (voluntary) [m tonnes]
+  co2_per_nm_kg
+  CO₂ emissions per distance on laden voyages [kg CO₂ / n mile]
+  CO₂ emissions per transport work (mass) [g CO₂ / m tonnes · n miles]
+  CO₂ emissions per transport work (mass) on laden voyages [g CO₂ / m tonnes · n miles]
+  CO₂ emissions per transport work (volume) [g CO₂ / m³ · n miles]
+  CO₂ emissions per transport work (volume) on laden voyages [g CO₂ / m³ · n miles]
+  CO₂ emissions per transport work (dwt) [g CO₂ / dwt carried · n miles]
+  CO₂ emissions per transport work (dwt) on laden voyages [g CO₂ / dwt carried · n miles]
+  CO₂ emissions per transport work (pax) [g CO₂ / pax · n miles]
+  CO₂ emissions per transport work (pax) on laden voyages [g CO₂ / pax · n miles]
+  CO₂ emissions per transport work (freight) [g CO₂ / m tonnes · n miles]
+  CO₂ emissions per transport work (freight) on laden voyages [g CO₂ / m tonnes · n miles]
+  CO₂ emissions per time spent at sea [m tonnes CO₂ / hour]
+  CO₂eq emissions per distance [kg CO₂eq / n mile]
+  CO₂eq emissions per distance on laden voyages [kg CO₂eq / n mile]
+  CO₂eq emissions per transport work (mass) [g CO₂eq / m tonnes · n miles]
+  CO₂eq emissions per transport work (mass) on laden voyages [g CO₂eq / m tonnes · n miles]
+  CO₂eq emissions per transport work (volume) [g CO₂eq / m³ · n miles]
+  CO₂eq emissions per transport work (volume) on laden voyages [g CO₂eq / m³ · n miles]
+  CO₂eq emissions per transport work (dwt) [g CO₂eq / dwt carried · n miles]
+  CO₂eq emissions per transport work (dwt) on laden voyages [g CO₂eq / dwt carried · n miles]
+  CO₂eq emissions per transport work (pax) [g CO₂eq / pax · n miles]
+  CO₂eq emissions per transport work (pax) on laden voyages [g CO₂eq / pax · n miles]
+  CO₂eq emissions per transport work (freight) [g CO₂eq / m tonnes · n miles]
+  CO₂eq emissions per transport work (freight) on laden voyages [g CO₂eq / m tonnes · n miles]
+  CO₂eq emissions per time spent at sea [m tonnes CO₂eq / m tonnes · n miles]
