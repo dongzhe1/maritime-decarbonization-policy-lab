@@ -12,7 +12,7 @@ try:
 except ImportError as exc:
     sys.exit(f"Missing dependency: {exc}\nInstall: pip install -e '.[all]'")
 
-from carbon_twin.cli import _load_scenario
+from carbon_twin.cli import _load_scenario, _resolve_fuel_price
 from carbon_twin.data.loaders import load_fuel_prices, load_mrv_csv, load_vessels_csv
 from carbon_twin.data.schemas import FuelType
 from carbon_twin.emissions.proxy import load_fuel_factors_safe, vessels_to_index
@@ -102,8 +102,9 @@ def main() -> None:
     ap.add_argument("--scenario", required=True, type=Path)
     ap.add_argument("--year", type=int, default=2035)
     ap.add_argument("--eua", type=float, default=80.0)
-    ap.add_argument("--fuel-price", type=float, default=650.0,
-                    help="VLSFO price EUR/t (used for speed optimizer)")
+    ap.add_argument("--fuel-price", type=float, default=None,
+                    help="VLSFO price EUR/t (used for speed optimizer); default: the "
+                         "scenario's VLSFO price")
     ap.add_argument(
         "--out", type=Path,
         default=Path("results/optimization/speed_rci_mrv_calibration.csv"))
@@ -116,6 +117,8 @@ def main() -> None:
 
     cfg = _load_scenario(str(args.scenario))
     regs = cfg["regulations"]
+    if args.fuel_price is None:
+        args.fuel_price = _resolve_fuel_price(cfg)
     mrv_df = load_mrv_csv(args.mrv)
     fleet_idx = vessels_to_index(load_vessels_csv(args.fleet))
     factors = variant.fuel_factors(load_fuel_factors_safe())

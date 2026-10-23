@@ -137,6 +137,11 @@ exp() {
       speed_calibration)
         run scripts/speed_rci_mrv_calibration.py "${common[@]}" --year 2035 --eua "$EUA" \
             --fuel-price 650 --out "$out/speed_calibration.csv" --workers "$J" --variant "$v" ;;
+      speed_years)
+        for y in 2026 2030 2035 2040 2045; do
+            run scripts/speed_rci_mrv_calibration.py "${common[@]}" --year "$y" --eua "$EUA" \
+                --out "$out/speed_years/speed_years_$y.csv" --workers "$J" --variant "$v"
+        done ;;
       speed_grid)
         run scripts/r1_speed_grid_check.py "${common[@]}" --variant "$v" --root "$R" \
             --years 2035,2045 --grids 15,29,57 --n-vessels 20000 --eua "$EUA" \
@@ -172,7 +177,7 @@ plan() {
         --out-dir "$R/baseline_diagnostics"
     for e in $LAMBDA2 metric_harmonization metric_harmonization_compat credit_price biofuel \
              retrofit_capex mrv_calibration fuel_robustness fuel_dimension pooling price_surface \
-             charter speed_k cii_proxy speed_calibration metric_harmonization_compat_fieldonly \
+             charter speed_k cii_proxy speed_calibration speed_years metric_harmonization_compat_fieldonly \
              lambda_compat_engine_fieldonly lambda_refine speed_grid; do
         exp "$e" "$CENTRAL"
     done

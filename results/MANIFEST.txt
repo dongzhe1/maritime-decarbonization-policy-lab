@@ -35,7 +35,7 @@ data/data_audit/mrv_data_dictionary.csv 10 40992816c69de1b2
 data/data_audit/sample_comparison.csv 3 5001beca67ac2eb4
 data/data_audit/sample_comparison_by_type.csv 36 4aa2e2437f394ff1
 data/data_audit/sample_exclusion_reasons.csv 2 c1cfac8818f64462
-data/data_audit/sample_waterfall.csv 10 cfd7f8ea49e8bb32
+data/data_audit/sample_waterfall.csv 10 496e70b154313f40
 data/data_audit/scope_weight_by_type.csv 12 d87d259779dd7c91
 data/scope_check/columns_found.txt 58 8616308b0b2721e4
 data/scope_check/scope_check_low_by_flag.csv 62 a72f81e124790c9d
@@ -290,6 +290,16 @@ variants/r1_lng_otto_ms_prio_fb_bd/speed_calibration_by_type.csv 66 45ae06615253
 variants/r1_lng_otto_ms_prio_fb_bd/speed_k.csv 7 0caf938de2665403
 variants/r1_lng_otto_ms_prio_fb_bd/speed_k.csv.variant.json - ccefa4b7b5cc7d30
 variants/r1_lng_otto_ms_prio_fb_bd/speed_k_by_type.csv 77 636594043da29a66
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2026.csv 6 f4b28ad864cc49ee
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2026_by_type.csv 66 f55f43a64580835b
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2030.csv 6 40d31a0191f685d2
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2030_by_type.csv 66 f79fac3592fa6c65
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2035.csv 6 56b8da3654738206
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2035_by_type.csv 66 f25b39d5bcee1bf0
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2040.csv 6 6508566da0ffa6bb
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2040_by_type.csv 66 31f38b1a4a8057a5
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2045.csv 6 bc7fa834487b84d5
+variants/r1_lng_otto_ms_prio_fb_bd/speed_years/speed_years_2045_by_type.csv 66 16d5f279b594c800
 variants/r1_lng_otto_ms_prop_fb/metric_harmonization.csv 20 7ecb98d12868e8b4
 variants/r1_lng_otto_ms_prop_fb/metric_harmonization.csv.variant.json - b83193048d6485a7
 variants/r1_lng_otto_ms_prop_fb/metric_harmonization_by_type.csv 220 994fac43de03e46e

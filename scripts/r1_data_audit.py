@@ -129,8 +129,7 @@ def main() -> None:
     fueleu_ok = set(comp.loc[comp["fueleu_balance"].notna(), "vessel_imo"])
     df["cii_valid"] = df["imo"].isin(cii_valid)
     df["fueleu_audit"] = df["imo"].isin(fueleu_ok)
-    df["speed_sample"] = (df["matched"] & df["design_speed_knots"].gt(0)
-                          & df["hours_at_sea"].gt(0) & df["distance_nm"].gt(0))
+    df["speed_sample"] = df["opt_ok"] & df["design_speed_knots"].gt(0)
 
     steps = [
         ("mrv_rows", "rows in the MRV file", len(df)),
@@ -147,7 +146,7 @@ def main() -> None:
         ("cii_valid", "optimisation filter + CO2 > 0 + attained CII <= 100",
          int(df["cii_valid"].sum())),
         ("fueleu_audit", "matched + MRV fuel > 0", int(df["fueleu_audit"].sum())),
-        ("speed_sample", "matched + design speed + hours at sea + distance",
+        ("speed_sample", "optimisation sample with a recorded design speed",
          int(df["speed_sample"].sum())),
     ]
     pd.DataFrame(steps, columns=["step", "definition", "n"]).to_csv(

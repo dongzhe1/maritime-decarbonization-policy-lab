@@ -273,7 +273,7 @@ variant given by `--variant`; outputs of the per-variant experiments go to
 | `fuel_price_sensitivity.py` | Regret across fuel-price scenarios and allowance prices of EUR50–200 (`price_surface`), and across charter-rate multipliers (`charter`) | MRV, fleet | `price_surface.csv`, `charter.csv` |
 | `rci_sensitivity.py` | Speed-only regret against the strength of the CII commercial-pressure term | MRV, fleet | `speed_k*.csv` |
 | `cii_proxy_sensitivity.py` | CII proxy rating mix and speed regret under ship-type bias scenarios of the proxy | MRV, fleet, compliance | `cii_proxy/` |
-| `speed_rci_mrv_calibration.py` | Speed-only regret in 2035 with energy calibrated to reported CO₂ | MRV, fleet | `speed_calibration*.csv` |
+| `speed_rci_mrv_calibration.py` | Speed-only regret with the fuel fixed (VLSFO): by policy year 2026–2045, and in 2035 with energy calibrated to reported CO₂ | MRV, fleet | `speed_years/`, `speed_calibration*.csv` |
 | `r1_speed_grid_check.py` | Regret of every vessel of a variant on 15-, 29- and 57-point speed grids | MRV, fleet, `fuel_dimension.parquet` | `checks/speed_grid/` |
 | `r1_slim_vessel_outputs.py` | Keeps the λ = 0 rows and each vessel's closing λ from the per-vessel λ table | per-vessel λ table | `.parquet` in `out/runs/` |
 | `r1_vessel_closed_form_check.py` | Each vessel's swept switching interval against the closed form at its scope weight | slim λ tables, closed forms | `checks/vessel_closed_form/` |
